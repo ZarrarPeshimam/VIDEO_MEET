@@ -1,0 +1,107 @@
+body,
+html{
+  overflow: hidden;
+}
+.landingPageContainer{
+  background-image: url("/background.png");
+  height: 100vh;
+  width: 100vw;
+  background-repeat: no-repeat;
+  background-size: cover;
+  color: white;
+}
+.landingPageContainer nav{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 8rem;
+}
+.landingPageContainer nav h2{
+  font-size: 1.25rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.landingPageContainer nav .navLink{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.75rem;
+  font-size: 1.2rem;
+
+}
+.landingPageContainer nav .navLink p:hover{
+  cursor: pointer;
+
+}
+.landingPageContainer nav .navLink button{
+  background-color: #FFD700;
+  color: black;
+  padding: 0.25rem 1rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.landingPageContainer nav .navLink button:hover{
+  background-color: #d9c034;
+  color: black;
+}
+.landingPageMainContent{
+  display: flex;
+  align-items: center;
+}
+.landingPageMainContent .leftContent{
+  padding: 0 10rem;
+  width: 55vw;
+}
+.landingPageMainContent .leftContent h2{
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  line-height: 2.75rem;
+}
+
+
+.landingPageMainContent .leftContent h2 span{
+  color: #d9bd1f;
+}
+.landingPageMainContent .leftContent p{
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+.landingPageMainContent .leftContent button{
+  background-color: #FFD700;
+  color: black;
+  padding: 0.35rem 1.25rem;
+  margin-top: 1.5rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.landingPageMainContent .leftContent button:hover{
+  background-color: #d9bd1f;
+  color: black;
+}
+.landingPageMainContent .rightContent{
+  background-image: url("/mobile.png");
+  background-repeat: no-repeat;
+  background-size: contain;
+  height: 70vh;
+  width: 45vw;
+}
+
+.box {
+  height: 612px;
+  width: 447px;
+}
+
+.box .group {
+  height: 612px;
+  left: 0;
+  position: fixed;
+  top: 0;
+  width: 447px;
+}

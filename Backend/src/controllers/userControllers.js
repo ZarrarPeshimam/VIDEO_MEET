@@ -43,10 +43,10 @@ const registerUser = async (req, res)=>{
         return res.status(201).json({
             success: true,
             message: 'User created successfully',
+            token,
             data: {
                 name: user.name,
                 email: user.email,
-                token: token
             }
         });
     }catch(err){
@@ -98,10 +98,10 @@ const loginUser = async (req, res)=>{
         return res.status(201).json({
             success: true,
             message: 'User logged in successfully',
+            token,
             data: {
                 name: user.name,
-                email: user.email,
-                token: token
+                email: user.email
             }
         });
     }catch(err){
@@ -131,9 +131,7 @@ const getUserProfile = async(req,res)=>{
 };
 
 const logoutUser = async(req,res)=>{
-    try{
-        res.clearCookie('token');
-        
+    try{        
         const token = req.cookies.token || 
                      (req.headers.authorization && req.headers.authorization.split(' ')[1]);
         
@@ -145,6 +143,7 @@ const logoutUser = async(req,res)=>{
         }
         
         await blackListTokenModel.create({ token });
+        res.clearCookie('token');
         
         return res.status(200).json({
             success: true,

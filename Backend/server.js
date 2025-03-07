@@ -6,6 +6,7 @@ import connectToSocket from './src/controllers/socketManager.js';
 import cors from 'cors';
 import connectDb from './src/Db/Db.js';
 import userRoutes from './src/routes/userRoutes.js';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 const port = process.env.PORT;
@@ -16,6 +17,7 @@ const io = connectToSocket(server);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
+app.use(cookieParser());
 connectDb();
 
 app.use('/users', userRoutes);
