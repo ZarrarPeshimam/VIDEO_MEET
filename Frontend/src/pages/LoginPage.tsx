@@ -45,9 +45,16 @@ export default function LoginPage() {
             navigate('/home');  
         }
 
-
-    }catch(err){
+    }catch(err: any){
       console.log(err);
+      // Display the error message from the API response
+      if (err.response && err.response.data && err.response.data.message) {
+        setError(err.response.data.message);
+      } else {
+        setError("An error occurred during login. Please try again.");
+      }
+      // Don't clear email/password on error so user can fix and retry
+      return;
     }
     setEmail("");
     setPassword("");

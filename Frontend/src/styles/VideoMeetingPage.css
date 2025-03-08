@@ -1,0 +1,317 @@
+/*Main Video Meeting Page Styling */
+
+.main-root-container {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* video page conntainer */
+
+.video-meeting-page-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    height: 100vh;
+    background-color: #181c14;
+}
+
+.main-video-container{
+    position: relative;
+
+}
+.local-video-container{
+    position: absolute;
+    border: 1px solid black;
+    width: 15vw;
+    right: 3rem;
+    bottom: 3rem;
+    border-radius: 0.75rem;
+    z-index: 1;
+    overflow: hidden;
+}
+.local-video-container video{
+    width: 100%;
+    height: 100%;
+    border-radius: 0.75rem;
+    object-fit: cover; /* Makes video cover the container */
+}
+.remote-video-container{
+    display: grid;
+}
+
+
+
+/*Main video container*/
+.main-video-container {
+    display: flex;
+    background-color: #3c3d37;
+    flex: 3.1;
+    height: 90vh;
+    /* border: 1px solid #dfcab9; */
+    border-radius: 0.75rem;
+    margin: 0.5rem;
+}
+
+
+
+ /* Chat container stylling */
+.main-chat-container {
+    display: flex;
+    flex-direction: column;
+    background-color: #3c3d37;
+    flex: 1;
+    height: 90vh;
+    /* border: 1px solid #c3b3a6; */
+    border-radius: 0.75rem;
+    margin: 0.5rem 0.5rem 0.5rem 0;
+    position: relative;
+}
+.main-chat-container .chat-header{
+    padding: 0  1.25rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 10%;
+    color: #fff;
+    font-size: 1.15rem;
+}
+.chat-security-info p{
+    color: #fff;
+    font-size: 0.8rem;
+    text-align: center;
+    background-color: #5a5b55;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    margin: 0.75rem 1rem 0.5rem 1rem;
+}
+.main-chat-container .chat-display{
+    display: flex;
+    flex-direction: column;
+    padding: 0.25rem 1rem 0.5rem 2rem; 
+    color: #fff;
+    height: 68%;
+    overflow-y: auto;
+    /* Add these properties to ensure messages stack correctly and scrolling works well */
+    /* gap: 0.5rem; */
+    scrollbar-width: thin;
+    scrollbar-color: #5a5b55 #3c3d37;
+}
+/* Add styling for the message items */
+.message {
+    margin-bottom: 8px;
+    max-width: 95%;
+    word-break: break-word;
+}
+
+.message-sender {
+    font-weight: bold;
+    margin-bottom: 2px;
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+}
+.message-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .message-time {
+    font-size: 0.85rem;
+    color: #ccc;
+  }
+  
+  .message-content {
+    font-size: 0.92rem;
+    margin-bottom: 0.7rem;
+  }
+
+/* .my-message {
+    align-self: flex-end;
+    background-color: #5a5b55;
+    border-radius: 12px 12px 2px 12px;
+    padding: 8px 12px;
+}
+
+.other-message {
+    align-self: flex-start;
+    background-color: #5a5b55;
+    border-radius: 12px 12px 12px 2px;
+    padding: 8px 12px;
+} */
+
+/* Add custom scrollbar styling */
+/* .main-chat-container .chat-display::-webkit-scrollbar {
+    width: 6px;
+}
+
+.main-chat-container .chat-display::-webkit-scrollbar-track {
+    background: #3c3d37;
+}
+
+.main-chat-container .chat-display::-webkit-scrollbar-thumb {
+    background-color: #5a5b55;
+    border-radius: 6px;
+} */
+
+.chat-input{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #c3b3a6;
+    border-radius: 0.75rem;
+    margin: 0 0.75rem;
+    color: #fff;
+    position: absolute;
+    bottom: 1rem;
+    width: 93%;
+    z-index: 1;
+}
+
+
+
+/* Icon container stylling */
+.icon-container {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    align-items: start;
+    height: 10vh;
+    width: 100%;
+    margin: 0 0.5rem;
+}
+
+.icon-container .icon-button{
+    color: #fff;
+    padding: 0.7rem;
+    background-color: #5a5b55;
+
+}
+.icon-container .icon-button .call-end{
+    color: #ff4d4d;
+}
+.icon-container .icon-button:hover{
+    cursor: pointer;
+    background-color: #484a46;
+}
+
+
+
+/* Participent conntainer stylling */
+.main-participent-container {
+    position: absolute;
+    background-color: #3c3d37;
+    display: flex;
+    flex-direction: column;
+    margin: 0.5rem;
+    height: 90vh;
+    width: 24%;
+    border-radius: 0.75rem;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    animation: slideIn 0.5s ease-in;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.main-participent-container.closing {
+    animation: slideOut 0.5s ease-out forwards;
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.main-participent-container .participent-header{
+    width: 100%;
+    padding: 0  1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 9%;
+    color: #fff;
+    font-size: 1.15rem;
+   
+}
+.main-participent-container .add-people{
+    margin: 1rem 0 0 1.25rem;
+    display: flex;
+    align-items: center;
+    width: 38%;
+    justify-content: space-between;
+    color: #fff;
+    font-size: 0.9rem;
+    background-color: #5a5b55;
+    border-radius: 2rem;
+    padding: 0.5rem 1rem;
+    
+}
+.main-participent-container .add-people:hover{
+    cursor: pointer;
+    background-color: #484a46;
+}
+.main-participent-container .people-in-meeting{
+    display: flex;
+    padding: 0 1.25rem;
+    flex-direction: column;
+    margin: 0.35rem 1.25rem 0 1.25rem;
+    border: 1px solid #c3b3a6;
+    border-radius: 0.75rem;
+    overflow-y: auto;
+    
+}
+.main-participent-container .people-in-meeting .people-header{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0.5rem 0;
+    color: #fff;
+    border-bottom: 1px solid #c3b3a6;
+    padding-bottom: 0.5rem;
+}
+.people-list .people-avatar h2{
+    height: 2rem;
+    width: 2rem;
+    border-radius: 50%;
+    border: 1px solid #c3b3a6;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.people-list .three-dots{
+    height: 1.5rem;
+    width: 1.5rem;
+    border-radius: 50%;
+}
+.people-list .three-dots:hover{
+    cursor: pointer;
+    background-color: #5a5b55;
+}
+
+
