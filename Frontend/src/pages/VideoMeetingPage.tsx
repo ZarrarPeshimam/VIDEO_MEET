@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import '../styles/VideoMeetingPage.css'
+// Add import for video layout manager
+import { updateVideoLayout, markAsScreenShare, updateLocalVideoPosition } from "../scripts/videoLayoutManager";
 
 import { IconButton, Button, TextField } from "@mui/material";
 import VideocamIcon from "@mui/icons-material/Videocam";
@@ -81,6 +83,10 @@ export default function VideoMeetingPage() {
 
   // Add a ref for the chat display container
   const chatDisplayRef = useRef<HTMLDivElement>(null);
+
+  // Add ref for remote video container
+  const remoteVideoContainerRef = useRef<HTMLDivElement>(null);
+  const localVideoContainerRef = useRef<HTMLDivElement>(null);
 
   const closeParticipantModal = () => {
     setIsClosing(true)
@@ -301,6 +307,17 @@ export default function VideoMeetingPage() {
     }
   }, [messages]);
 
+  // Update layout whenever videos array changes or screen sharing state changes
+  useEffect(() => {
+    if (remoteVideoContainerRef.current) {
+      updateVideoLayout(remoteVideoContainerRef.current, videos.length, isScreenSharing);
+    }
+    
+    if (localVideoContainerRef.current) {
+      updateLocalVideoPosition(localVideoContainerRef.current, videos.length, isScreenSharing);
+    }
+  }, [videos.length, isScreenSharing]);
+
   const connectToSocketServer = () => {
     console.log("Connecting to socket server:", server_url);
     socketRef.current = io(server_url, { secure: true });
@@ -475,6 +492,8 @@ export default function VideoMeetingPage() {
     window.localStream = stream;
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = stream;
+      // Mark the local video as screen sharing
+      markAsScreenShare(localVideoRef.current, true);
     }
 
     // Update screen sharing state
@@ -495,6 +514,12 @@ export default function VideoMeetingPage() {
     stream.getTracks().forEach(track => track.onended = () => {
       setScreen(false);
       setIsScreenSharing(false); // Update screen sharing state when ended
+      
+      if (localVideoRef.current) {
+        // Unmark as screen sharing
+        markAsScreenShare(localVideoRef.current, false);
+      }
+      
       try{
         if (localVideoRef.current && localVideoRef.current.srcObject) {
           const stream = localVideoRef.current.srcObject as MediaStream;
@@ -607,29 +632,41 @@ export default function VideoMeetingPage() {
         <div className='main-root-container'>
         <div className='video-meeting-page-container'>
             <div className="main-video-container">
-              <div className="local-video-container">
+              <div 
+                className="local-video-container"
+                ref={localVideoContainerRef}
+              >
                 <video
                   ref={localVideoRef}
                   autoPlay
                   playsInline
                   muted
-                  className="local-video"
+                  className={`local-video ${isScreenSharing ? 'screen-share' : ''}`}
                 ></video>
               </div>
-              <div className="remote-video-container">
-                {videos.map((video, index) => (
-                  <video
-                    key={index}
-                    data-socket-id={video.socketId}
-                    ref={(ref) => {
-                      if (ref && video.stream) {
-                        ref.srcObject = video.stream;
-                      }}}
-                    autoPlay
-                    playsInline
-                    className="remote-video"
-                  ></video>
-                ))}
+              <div 
+                className="remote-video-container"
+                ref={remoteVideoContainerRef}
+              >
+                {videos.length === 0 ? (
+                  <div className="no-remote-videos">
+                    <p>No other participants</p>
+                  </div>
+                ) : (
+                  videos.map((video, index) => (
+                    <video
+                      key={index}
+                      data-socket-id={video.socketId}
+                      ref={(ref) => {
+                        if (ref && video.stream) {
+                          ref.srcObject = video.stream;
+                        }}}
+                      autoPlay
+                      playsInline
+                      className={`remote-video ${video.isScreenShare ? 'screen-share' : ''}`}
+                    ></video>
+                  ))
+                )}
               </div>
             </div>
             <div className="main-chat-container">
