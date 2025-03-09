@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import '../styles/VideoMeetingPage.css'
-// Add import for video layout manager
+// Update import to use TypeScript version
 import { updateVideoLayout, markAsScreenShare, updateLocalVideoPosition } from "../scripts/videoLayoutManager";
 
 import { IconButton, Button, TextField } from "@mui/material";

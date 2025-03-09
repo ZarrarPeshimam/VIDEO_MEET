@@ -139,20 +139,18 @@
     color: #fff;
     height: 68%;
     overflow-y: auto;
-    /* Add these properties to ensure messages stack correctly and scrolling works well */
-    /* gap: 0.5rem; */
     scrollbar-width: thin;
     scrollbar-color: #5a5b55 #3c3d37;
 }
 /* Add styling for the message items */
 .message {
-    margin-bottom: 8px;
+    /* margin-bottom: 8px; */
     max-width: 95%;
     word-break: break-word;
 }
 
 .message-sender {
-    font-weight: bold;
+    font-weight: 550;
     margin-bottom: 2px;
     display: block;
     font-size: 1rem;
@@ -171,7 +169,7 @@
   
   .message-content {
     font-size: 0.92rem;
-    margin-bottom: 0.7rem;
+    margin-bottom: 0.75rem;
   }
 
 /* .my-message {

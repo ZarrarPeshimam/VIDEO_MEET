@@ -4,6 +4,7 @@ import RegisterPage from '@/pages/RegisterPage'
 import LoginPage from '@/pages/LoginPage'
 import HomePage from '@/pages/HomePage'
 import VideoMeetingPage from '@/pages/VideoMeetingPage'
+import FeedbackPage from '@/pages/FeedbackPage'
 
 export default function AppRoutes() {
   return (
@@ -14,6 +15,7 @@ export default function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/:url" element={<VideoMeetingPage />} />
         <Route path="/home" element={<HomePage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
       </Routes>
     </Router>
   )

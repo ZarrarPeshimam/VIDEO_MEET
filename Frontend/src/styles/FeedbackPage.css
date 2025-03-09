@@ -1,0 +1,44 @@
+.button-rejoin,
+.button-return{
+    font-size: 1.1rem;
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.25rem 1.5rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+.button-return{
+    background-color: rgb(72, 134, 234);
+    color: #fff;
+}
+.button-rejoin{
+    border: 1px solid rgb(72, 134, 234);
+}
+
+
+
+.timer-circle {
+    position: relative;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.timer-circle::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(#3b82f6 var(--progress), transparent var(--progress));
+    mask: radial-gradient(transparent 60%, black 61%);
+    -webkit-mask: radial-gradient(transparent 60%, black 61%);
+}
+
+.timer-content {
+    z-index: 1;
+    font-weight: 500;
+}

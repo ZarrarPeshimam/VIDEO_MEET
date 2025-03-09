@@ -2,11 +2,28 @@
  * Video Layout Manager for handling dynamic arrangement of video elements
  */
 
-// Adjusts the layout of videos based on count and screen sharing status
-export const updateVideoLayout = (container, videoCount, isScreenSharing) => {
+// Define custom HTML video element with additional dataset properties
+interface CustomHTMLVideoElement extends HTMLVideoElement {
+  dataset: {
+    isScreenShare?: string;
+    socketId?: string;
+  }
+}
+
+/**
+ * Adjusts the layout of videos based on count and screen sharing status
+ * @param container - The container element holding all video elements
+ * @param videoCount - Number of videos currently in the call
+ * @param isScreenSharing - Boolean indicating if someone is screen sharing
+ */
+export const updateVideoLayout = (
+  container: HTMLDivElement | null,
+  videoCount: number,
+  isScreenSharing: boolean
+): void => {
   if (!container) return;
   
-  const videos = container.querySelectorAll('video');
+  const videos = container.querySelectorAll('video') as NodeListOf<CustomHTMLVideoElement>;
   
   // Reset container styles
   container.style.gridTemplateColumns = '';
@@ -77,7 +94,7 @@ export const updateVideoLayout = (container, videoCount, isScreenSharing) => {
     const containerAspect = containerWidth / containerHeight;
     
     // Determine optimal grid layout based on number of videos
-    let cols, rows;
+    let cols: number, rows: number;
     
     if (videoCount === 2) {
       // 2 videos side by side
@@ -120,12 +137,12 @@ export const updateVideoLayout = (container, videoCount, isScreenSharing) => {
     container.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
     container.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
     
-    // Calculate and set the height of each cell to maintain proper aspect ratio
+    // Calculate unused variables for potential future use
     const cellWidth = containerWidth / cols;
     const cellHeight = containerHeight / rows;
     
     // Apply styles to ensure videos display properly within grid cells
-    Array.from(videos).forEach((video, index) => {
+    Array.from(videos).forEach((video) => {
       // Override default video styles for grid layout
       video.style.width = '100%';
       video.style.height = '100%';
@@ -138,15 +155,31 @@ export const updateVideoLayout = (container, videoCount, isScreenSharing) => {
   }
 };
 
-// Marks a specific video as a screen share
-export const markAsScreenShare = (videoElement, isScreenShare = true) => {
+/**
+ * Marks a specific video as a screen share
+ * @param videoElement - The video element to mark as screen share
+ * @param isScreenShare - Boolean indicating if this is a screen share video
+ */
+export const markAsScreenShare = (
+  videoElement: HTMLVideoElement | null,
+  isScreenShare: boolean = true
+): void => {
   if (videoElement) {
-    videoElement.dataset.isScreenShare = isScreenShare.toString();
+    (videoElement as CustomHTMLVideoElement).dataset.isScreenShare = isScreenShare.toString();
   }
 };
 
-// Updates the size and position of the local video based on remote video count
-export const updateLocalVideoPosition = (localVideoContainer, remoteVideoCount, isScreenSharing) => {
+/**
+ * Updates the size and position of the local video based on remote video count
+ * @param localVideoContainer - The container element for the local video
+ * @param remoteVideoCount - Number of remote videos in the call
+ * @param isScreenSharing - Boolean indicating if someone is screen sharing
+ */
+export const updateLocalVideoPosition = (
+  localVideoContainer: HTMLDivElement | null,
+  remoteVideoCount: number,
+  isScreenSharing: boolean
+): void => {
   if (!localVideoContainer) return;
   
   if (remoteVideoCount === 0) {

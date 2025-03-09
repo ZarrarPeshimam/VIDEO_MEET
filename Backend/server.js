@@ -9,7 +9,8 @@ import userRoutes from './src/routes/userRoutes.js';
 import cookieParser from 'cookie-parser';
 
 const app = express();
-const port = process.env.PORT;
+// const port = process.env.PORT;
+const port = 3001;
 
 const server = createServer(app);
 const io = connectToSocket(server);
