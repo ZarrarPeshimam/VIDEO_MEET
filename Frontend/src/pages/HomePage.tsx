@@ -1,6 +1,6 @@
 import React from 'react'
 import axios from 'axios'
-import { useContext } from 'react'
+import { useContext, useState } from 'react'
 import { UserContext } from '../contexts/userContext'
 import { useNavigate } from 'react-router-dom';
 import "../styles/HomePage.css";
@@ -19,6 +19,7 @@ export default function HomePage() {
     const [api, setApi] = React.useState<CarouselApi>()
     const [current, setCurrent] = React.useState(0)
     const [count, setCount] = React.useState(0)
+    const [showProfile, setShowProfile] = useState(false)
    
     React.useEffect(() => {
       if (!api) {
@@ -33,6 +34,20 @@ export default function HomePage() {
       })
     }, [api])
 
+    // Add this effect after other useEffect hooks
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.profile-picture') && !target.closest('.profile-content')) {
+                setShowProfile(false);
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -79,7 +94,7 @@ export default function HomePage() {
             <div className="nav-bar-left-content">
                 <h2 className='cursor-pointer text-xl font-medium'>VideoMeet</h2>
             </div>
-            <div className="nav-bar-right-content text-lg">
+            <div className="nav-bar-right-content text-lg font-normal">
                 <h2>
                     {new Date().toLocaleString('en-US', {
                         hour: 'numeric',
@@ -94,10 +109,36 @@ export default function HomePage() {
                 </h2>
                 <i className="fa-solid fa-gear"></i>
                 <i className="fa-solid fa-clock-rotate-left"></i>
-                <div className="profile-picture"></div>
+                <div className="profile-picture" onClick={() => setShowProfile(!showProfile)}>
+                    <h2>A</h2>
+                </div>
             </div>
 
         </div>
+        {
+            showProfile && (
+                <div className="profile-content h-52 w-64 border-1 font-medium border-amber-900 bg-background absolute top-16 right-25 rounded-lg z-10 flex flex-col p-2">
+                <div className="manage-history flex items-center gap-4 p-2.5 text-lg cursor-pointer">
+                    <i className="fa-solid fa-clock-rotate-left"></i>
+                    <h2>History</h2>
+                </div>
+                <div className="manage-customization flex items-center gap-4 p-2.5 text-lg cursor-pointer">
+                    <i className="fa-solid fa-pencil"></i>
+                    <h2>Customize profile</h2>
+                </div>
+                <div className="manage-another-profile flex items-center gap-4 p-2.5 text-lg cursor-pointer">
+                    <i className="fa-solid fa-user-plus"></i>
+                    <h2>Add another account</h2>
+                </div>
+    
+                <div className="manage-logout flex items-center gap-4 p-2.5 text-lg cursor-pointer" onClick={handleLogout}>
+                    <i className="fa-solid fa-right-from-bracket"></i>
+                    <h2>Logout</h2>
+                </div>
+            </div>
+            )
+        }
+
         <div className="main-containt">
             <div className="left-side-content">
                 <h2 className='heading font-bold text-4xl'>Premium video meetings </h2>
@@ -120,10 +161,18 @@ export default function HomePage() {
             <div className="right-side-content w-80 ml-56 mt-28">
                 <Carousel className='carousel '>
                 <CarouselContent className='carousel-content flex justify-between items-center'>
-                    <CarouselItem><div className='h-80 w-80 bg-amber-300 border-2 border-amber-700 rounded-full'></div></CarouselItem>
-                    <CarouselItem><div className='h-80 w-80 bg-red-700 border-2 border-amber-700 rounded-full'></div></CarouselItem>
-                    <CarouselItem><div className='h-80 w-80 bg-blue-700 border-2 border-amber-700 rounded-full'></div></CarouselItem>
-                    <CarouselItem><div className='h-80 w-80 bg-card border-2 border-amber-700 rounded-full'></div></CarouselItem>
+                    <CarouselItem><div className='h-80 w-80 rounded-full overflow-hidden'>
+                        <img src="./photo2.jpg" alt="" className="w-full h-full object-cover" />
+                        </div></CarouselItem>
+                    <CarouselItem><div className='h-80 w-80  rounded-full overflow-hidden'>
+                        <img src="./photo1.jpg" alt="" className="w-full h-full object-cover" />
+                        </div></CarouselItem>
+                    <CarouselItem><div className='h-80 w-80 rounded-full overflow-hidden'>
+                    <img src="./photo3.jpg" alt="" className="w-full h-full object-cover" />
+                        </div></CarouselItem>
+                    <CarouselItem><div className='h-80 w-80  rounded-full overflow-hidden'>
+                    <img src="./photo4.jpg" alt="" className="w-full h-full object-cover" />
+                        </div></CarouselItem>
                 </CarouselContent>
                 <CarouselPrevious />
                 <CarouselNext/>
