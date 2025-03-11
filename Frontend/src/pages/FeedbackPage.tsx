@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom';
 import "../styles/FeedbackPage.css";
+import "../styles/Rating.css";
 
 export default function FeedbackPage() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function FeedbackPage() {
         if (prevTime <= 1) {
           clearInterval(timer);
           // Redirect to home page when timer completes
-          navigate('/home');
+          // navigate('/home');
           return 0;
         }
         return prevTime - 1;
@@ -65,8 +66,30 @@ export default function FeedbackPage() {
       </div>
       <div 
       style={{ display: showFeedback ? "block" : "none" }}
-      className="feedback-container absolute h-96 w-4/7 bg-background border-1 border-emerald-600 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-lg flex flex-col justify-center items-center gap-4">
-
+      className="feedback-container absolute h-92 w-3/7 bg-background border-1 border-emerald-600 top-2/5 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-lg flex flex-col justify-center items-center gap-4">
+        <div className="rating-div flex flex-col justify-center items-center gap-4 p-4 rounded-lg">
+          <h2 
+          onClick={() => setShowFeedback(false)}
+          className='skip-button absolute right-0 top-0 pr-6 pt-4 cursor-pointer'><i className="fa-solid fa-forward"></i> Skip</h2>
+          <h2 className=' text-2xl font-medium mb-4'>How was your experience ?</h2>
+          <fieldset className="starability-fade">
+            <input type="radio" id="second-rate1" name="rating" value="1" />
+            <label htmlFor="second-rate1" title="Terrible">1 star</label>
+            <input type="radio" id="second-rate2" name="rating" value="2" />
+            <label htmlFor="second-rate2" title="Not good">2 stars</label>
+            <input type="radio" id="second-rate3" name="rating" value="3" />
+            <label htmlFor="second-rate3" title="Average">3 stars</label>
+            <input type="radio" id="second-rate4" name="rating" value="4" />
+            <label htmlFor="second-rate4" title="Very good">4 stars</label>
+            <input type="radio" id="second-rate5" name="rating" value="5" />
+            <label htmlFor="second-rate5" title="Amazing">5 stars</label>
+          </fieldset>
+          <textarea
+            className='w-86 h-24 p-2 border-1 border-gray-300 rounded-md'
+            placeholder='Write your feedback here...'
+          ></textarea>
+          <button className="submit-feedback-button">Submit</button>
+        </div>
       </div>
     </div>
   )
