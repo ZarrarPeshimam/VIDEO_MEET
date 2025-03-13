@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import blackListTokenModel from '../models/blackListTokenModel.js';
 import dotenv from 'dotenv';
+import meetingModel from '../models/meetingModel.js';
 dotenv.config();
 
 const registerUser = async (req, res)=>{
@@ -158,4 +159,132 @@ const logoutUser = async(req,res)=>{
     }
 };
 
-export default { registerUser, loginUser, getUserProfile, logoutUser };
+const getUserHistory = async(req,res)=>{
+    try{
+        // Use the authenticated user from req.user (set by authMiddleware)
+        const user = req.user;
+        
+        if(!user){
+            return res.status(400).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        // Get pagination parameters from the request
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        
+        // Get all meetings where user is the host OR a participant
+        const meetings = await meetingModel.find({
+            $or: [
+                { hostId: user._id },
+                { participants: user._id }
+            ]
+        })
+        .sort({ createdAt: -1 }) // Sort by creation date, newest first
+        .skip(skip)
+        .limit(limit);
+        
+        // Get total count for pagination info
+        const totalCount = await meetingModel.countDocuments({
+            $or: [
+                { hostId: user._id },
+                { participants: user._id }
+            ]
+        });
+        
+        return res.status(200).json({
+            success: true,
+            message: 'User history fetched successfully',
+            data: meetings,
+            pagination: {
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                currentPage: page,
+                hasMore: skip + meetings.length < totalCount
+            }
+        });
+
+    }catch(err){
+        console.log(err);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+const addToHistory = async (req, res) => {
+    try {
+        // Use the authenticated user from req.user (set by authMiddleware)
+        const user = req.user;
+        
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        // Validate required fields
+        const { title, startTime, endTime, meetingLink } = req.body;
+        if (!title || !startTime || !endTime || !meetingLink) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required meeting fields'
+            });
+        }
+        
+        // Extract the meeting ID from the meetingLink
+        let customMeetingId;
+        try {
+            const url = new URL(meetingLink);
+            const pathParts = url.pathname.split('/');
+            customMeetingId = pathParts[pathParts.length - 1];
+        } catch (err) {
+            // If not a valid URL, use the last part after the last slash
+            customMeetingId = meetingLink.split('/').pop();
+        }
+        
+        // Check if meeting with this ID already exists
+        const existingMeeting = await meetingModel.findOne({
+            $or: [
+                { meetingLink: { $regex: customMeetingId, $options: 'i' } },
+                { customMeetingId: customMeetingId }
+            ]
+        });
+        
+        if (existingMeeting) {
+            // If meeting exists, return it without creating a new one
+            return res.status(200).json({
+                success: true,
+                message: 'Meeting already exists in history',
+                data: existingMeeting
+            });
+        }
+        
+        // Create new meeting with customMeetingId
+        const meeting = await meetingModel.create({
+            ...req.body,
+            hostId: user._id,
+            customMeetingId, // Store the custom ID
+            status: req.body.status || 'scheduled'
+        });
+        
+        return res.status(201).json({
+            success: true,
+            message: 'Meeting added to history successfully',
+            data: meeting
+        });
+    } catch (err) {
+        console.error("Error adding meeting to history:", err);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error: ' + err.message
+        });
+    }
+};
+
+export default { registerUser, loginUser, getUserProfile, logoutUser, getUserHistory, addToHistory };

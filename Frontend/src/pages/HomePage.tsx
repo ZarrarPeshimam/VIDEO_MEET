@@ -1,6 +1,6 @@
 import React from 'react'
 import axios from 'axios'
-import { useContext, useState } from 'react'
+import { useContext, useState, useEffect } from 'react'
 import { UserContext } from '../contexts/userContext'
 import { useNavigate } from 'react-router-dom';
 import "../styles/HomePage.css";
@@ -11,29 +11,26 @@ import {
     CarouselNext,
     CarouselPrevious,
   } from "@/components/ui/carousel"
+import { useMeeting } from '@/contexts/meetingContext';
   
 
 export default function HomePage() {
     const navigate = useNavigate();
     const {user, setUser} = useContext(UserContext);
-    const [api, setApi] = React.useState<CarouselApi>()
     const [current, setCurrent] = React.useState(0)
     const [count, setCount] = React.useState(0)
     const [showProfile, setShowProfile] = useState(false)
-   
-    React.useEffect(() => {
-      if (!api) {
-        return
-      }
-   
-      setCount(api.scrollSnapList().length)
-      setCurrent(api.selectedScrollSnap() + 1)
-   
-      api.on("select", () => {
-        setCurrent(api.selectedScrollSnap() + 1)
-      })
-    }, [api])
+    const [meetingCode, setMeetingCode] = useState('')
+    const meeting = useMeeting();
 
+    // Check authentication on component mount
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/');
+        }
+    }, [navigate]);
+   
     // Add this effect after other useEffect hooks
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -86,7 +83,59 @@ export default function HomePage() {
         }
     }
 
-
+    // Navigate to history page
+    const navigateToHistory = (event: React.MouseEvent) => {
+        event.stopPropagation(); // Prevent this from triggering other click handlers
+        navigate('/history');
+    };
+    
+    // Create a new meeting
+    const handleNewMeeting = async () => {
+        try {
+            // Show loading state if needed
+            
+            const meetingId = await meeting.createMeeting();
+            
+            if (!meetingId) {
+                console.error("Failed to create meeting - no meeting ID returned");
+                return;
+            }
+            
+            try {
+                // Add meeting to history but don't block navigation if it fails
+                await meeting.addMeetingToHistory({
+                    title: `Meeting ${new Date().toLocaleString()}`,
+                    startTime: new Date().toISOString(),
+                    endTime: new Date(Date.now() + 3600000).toISOString(), // 1 hour default
+                    meetingLink: `${window.location.origin}/meeting/${meetingId}`,
+                    status: 'ongoing'
+                });
+            } catch (historyError) {
+                console.log("Failed to add meeting to history, but continuing:", historyError);
+                // Continue with navigation even if history update fails
+            }
+            
+            // Navigate to meeting room with the correct path
+            navigate(`/meeting/${meetingId}`);
+        } catch (error) {
+            console.error("Error creating meeting:", error);
+            // Show error message to user if needed
+        }
+    };
+    
+    // Join existing meeting
+    const handleJoinMeeting = () => {
+        if (meetingCode) {
+            // If user entered a complete URL, extract just the meeting ID
+            if (meetingCode.includes('/meeting/')) {
+                const meetingId = meetingCode.split('/meeting/')[1];
+                navigate(`/meeting/${meetingId}`);
+            } else {
+                // Otherwise use the code directly
+                navigate(`/meeting/${meetingCode}`);
+            }
+        }
+    };
 
   return (
     <div>
@@ -108,7 +157,7 @@ export default function HomePage() {
                     })}
                 </h2>
                 <i className="fa-solid fa-gear"></i>
-                <i className="fa-solid fa-clock-rotate-left"></i>
+                <i className="fa-solid fa-clock-rotate-left cursor-pointer" onClick={navigateToHistory}></i>
                 <div className="profile-picture" onClick={() => setShowProfile(!showProfile)}>
                     <h2>A</h2>
                 </div>
@@ -118,7 +167,7 @@ export default function HomePage() {
         {
             showProfile && (
                 <div className="profile-content h-52 w-64 border-1 font-medium border-amber-900 bg-background absolute top-16 right-25 rounded-lg z-10 flex flex-col p-2">
-                <div className="manage-history flex items-center gap-4 p-2.5 text-lg cursor-pointer">
+                <div className="manage-history flex items-center gap-4 p-2.5 text-lg cursor-pointer" onClick={navigateToHistory}>
                     <i className="fa-solid fa-clock-rotate-left"></i>
                     <h2>History</h2>
                 </div>
@@ -146,13 +195,20 @@ export default function HomePage() {
                 <p className='heading-small mt-8 '>We re-engineered the service we built for secure business meetings,</p>
                 <p className='heading-small '> Google Meet, to make it free and available for all.</p>
                 <div className="start-call-field">
-                    <button className='Start-call-button'>
+                    <button className='Start-call-button' onClick={handleNewMeeting}>
                         <h2><i className="fa-solid fa-square-plus"></i></h2>
                         New meeting
                         </button>
                     <div className="input-link">
                     <i className="fa-solid fa-keyboard"></i>
-                    <input type="text" placeholder="Enter a code or link" className='outline-none'></input>
+                    <input 
+                        type="text" 
+                        placeholder="Enter a code or link" 
+                        className='outline-none'
+                        value={meetingCode}
+                        onChange={(e) => setMeetingCode(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleJoinMeeting()}
+                    />
                     </div>
                 </div>
                 <p className='hr-line border-b-1 border-black w-10/12 mt-10'></p>
@@ -183,11 +239,5 @@ export default function HomePage() {
             </div>
         </div>
     </div>
-    // <div>
-    //   Well come to Home Page
-    //   <button
-    //   onClick={handleLogout}
-    //    className=' border border-amber-500 p-2 rounded-2xl'>Logout</button>
-    // </div>
   )
 }

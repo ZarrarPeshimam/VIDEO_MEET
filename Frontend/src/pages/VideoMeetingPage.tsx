@@ -16,6 +16,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import ThreeDotsIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
+import axios from 'axios';
 
 // Define types for your WebRTC connections
 type ConnectionsType = {
@@ -598,17 +599,188 @@ export default function VideoMeetingPage() {
     setMessage("");
   };
 
-  const handleEndCall = () => {
+  // Add utility function to properly stop a media stream
+  const stopMediaStream = (stream: MediaStream | null) => {
+    if (!stream) return;
+    
     try {
-      if (localVideoRef.current && localVideoRef.current.srcObject) {
-        const stream = localVideoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
-    } catch(err) {
-      console.error("Error: ", err);
+      // Stop all tracks individually
+      stream.getTracks().forEach(track => {
+        track.stop();
+        stream.removeTrack(track); // Remove track from stream
+      });
+    } catch (err) {
+      console.error("Error stopping media stream tracks:", err);
     }
-    navigate("/home");
   };
+
+  // Update this function to handle the custom meeting ID format
+  const updateMeetingStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log("No token found, skipping meeting status update");
+        return;
+      }
+
+      // Extract meeting ID from URL
+      const pathParts = window.location.pathname.split('/');
+      const meetingId = pathParts[pathParts.length - 1];
+      
+      console.log("Updating meeting status for ID:", meetingId);
+      
+      // Current timestamp for accurate end time
+      const endTimeStamp = new Date().toISOString();
+      
+      // First check if the meeting already exists
+      try {
+        const checkResponse = await axios.get(
+          `${import.meta.env.VITE_BASE_URL}/meetings/${meetingId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+        
+        // If meeting exists, update it
+        if (checkResponse.data.success) {
+          console.log("Found existing meeting, updating status");
+        }
+      } catch (error) {
+        console.log("Meeting not found, no update needed");
+        return null;
+      }
+      
+      // Call API to update meeting status
+      const response = await axios.put(
+        `${import.meta.env.VITE_BASE_URL}/meetings/${meetingId}`,
+        {
+          status: 'completed',
+          endTime: endTimeStamp
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        console.log("Meeting status updated successfully");
+      } else {
+        console.error("Failed to update meeting status:", response.data);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error("Failed to update meeting status:", error);
+      // Don't rethrow so we don't block navigation
+      return null;
+    }
+  };
+
+  const handleEndCall = async () => {
+    console.log("Ending call and cleaning up resources...");
+    
+    try {
+      // First update meeting status before any potential issues with media cleanup
+      await updateMeetingStatus();
+      
+      // Stop screen sharing if active
+      if (isScreenSharing) {
+        setIsScreenSharing(false);
+        setScreen(false);
+      }
+      
+      // Stop local video/audio tracks and clear references
+      if (window.localStream) {
+        console.log("Stopping local stream tracks...");
+        stopMediaStream(window.localStream);
+        window.localStream = null as any; // Clear reference
+      }
+      
+      // Stop tracks from video element source
+      if (localVideoRef.current && localVideoRef.current.srcObject) {
+        console.log("Stopping video element source stream...");
+        const stream = localVideoRef.current.srcObject as MediaStream;
+        stopMediaStream(stream);
+        
+        // Clear source
+        localVideoRef.current.srcObject = null;
+      }
+      
+      // Close all peer connections properly
+      console.log("Closing all peer connections...");
+      Object.entries(connections).forEach(([id, connection]) => {
+        if (connection) {
+          // Remove all event listeners
+          connection.onicecandidate = null;
+          connection.onaddstream = null;
+          connection.onremovestream = null;
+          connection.oniceconnectionstatechange = null;
+          
+          // Close the connection
+          connection.close();
+          delete connections[id]; // Remove reference
+        }
+      });
+      
+      // Disconnect from socket and remove all listeners
+      if (socketRef.current) {
+        console.log("Disconnecting socket...");
+        socketRef.current.offAny(); // Remove all event listeners
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      
+      // Reset all state
+      setVideo(false);
+      setAudio(false);
+      setScreen(false);
+      setIsScreenSharing(false);
+      setVideos([]); // Clear videos array
+      
+      console.log("All media resources cleaned up successfully");
+    } catch (err) {
+      console.error("Error during call cleanup:", err);
+    } finally {
+      // Small delay to ensure all cleanup completes
+      setTimeout(() => {
+        // Navigate back to home after cleanup
+        navigate("/home");
+      }, 100);
+    }
+  };
+
+  // Update cleanup in useEffect to use the same thorough cleanup
+  useEffect(() => {
+    getPermissions();
+    
+    return () => {
+      console.log("Component unmounting, cleaning up resources...");
+      // Clean up peer connections
+      Object.values(connections).forEach((connection) => {
+        if (connection) {
+          connection.onicecandidate = null;
+          connection.onaddstream = null;
+          connection.close();
+        }
+      });
+      
+      // Clean up media streams
+      if (window.localStream) {
+        stopMediaStream(window.localStream);
+        window.localStream = null as any;
+      }
+      
+      // Clean up socket
+      if (socketRef.current) {
+        socketRef.current.offAny();
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
 
   return (
     <>
