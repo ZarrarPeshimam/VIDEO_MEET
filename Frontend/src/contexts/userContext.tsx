@@ -1,4 +1,4 @@
-import React, { createContext, useState, ReactNode } from 'react';
+import React, { createContext, useState, ReactNode, useEffect } from 'react';
 
 // Define types for user and context
 type User = {
@@ -25,7 +25,27 @@ type UserProviderProps = {
 };
 
 export const UserProvider = ({ children }: UserProviderProps) => {
-  const [user, setUser] = useState<User>(null);
+  const [user, setUser] = useState<User>(() => {
+    // Try to load user from localStorage on initial render
+    const savedUser = localStorage.getItem('userData');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+  
+  // Persist user data to localStorage whenever it changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('userData', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('userData');
+    }
+  }, [user]);
 
   return (
     <UserContext.Provider value={{ user, setUser }}>

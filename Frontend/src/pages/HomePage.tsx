@@ -210,6 +210,13 @@ export default function HomePage() {
                         onKeyDown={(e) => e.key === 'Enter' && handleJoinMeeting()}
                     />
                     </div>
+                    <button 
+                        className={`Join-button ${meetingCode ? 'active' : ''}`} 
+                        onClick={handleJoinMeeting}
+                        disabled={!meetingCode}
+                    >
+                        <h2>Join</h2>
+                    </button>
                 </div>
                 <p className='hr-line border-b-1 border-black w-10/12 mt-10'></p>
                 <p className='mt-8 text-lg'><span className='text-blue-500 cursor-pointer hover:text-blue-600'>Learn more </span>about Video Meet</p>

@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useContext } from 'react'
 import '../styles/VideoMeetingPage.css'
 // Update import to use TypeScript version
 import { updateVideoLayout, markAsScreenShare, updateLocalVideoPosition } from "../scripts/videoLayoutManager";
+import { UserContext } from '../contexts/userContext'
+import { useAuthCheck } from '../utils/AuthUtils'
 
 import { IconButton, Button, TextField } from "@mui/material";
 import VideocamIcon from "@mui/icons-material/Videocam";
@@ -56,6 +58,9 @@ declare global {
 }
 
 export default function VideoMeetingPage() {
+  const navigate = useNavigate();
+  const { user } = useContext(UserContext);
+  const { isAuthenticated, loading } = useAuthCheck();
   const [participentModal, setParticipentModal] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -77,7 +82,6 @@ export default function VideoMeetingPage() {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const socketRef = useRef<any>(null);
   const socketIdRef = useRef<string>("");
-  const navigate = useNavigate();
   
   // Create connections object
   const connections: ConnectionsType = {};
@@ -782,9 +786,51 @@ export default function VideoMeetingPage() {
     };
   }, []);
 
+  // Check for logged-in user and set username if available
+  useEffect(() => {
+    if (!loading) {
+      if (isAuthenticated && user?.name) {
+        // User is authenticated and we have their name
+        setUsername(user.name);
+        setAskForUsername(false);
+        getMedia();
+      } else {
+        // Check local storage as fallback
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+          // If no token and not on localhost, redirect to login
+          if (!window.location.hostname.includes('localhost')) {
+            navigate('/login');
+          }
+        } else {
+          // We have a token but no user data yet - the auth check will handle loading it
+          // Just show the username prompt until data loads
+          const storedUserData = localStorage.getItem('userData');
+          if (storedUserData) {
+            try {
+              const userData = JSON.parse(storedUserData);
+              if (userData.name) {
+                setUsername(userData.name);
+                setAskForUsername(false);
+                getMedia();
+              }
+            } catch (e) {
+              console.error("Error parsing stored user data", e);
+            }
+          }
+        }
+      }
+    }
+  }, [loading, isAuthenticated, user, navigate]);
+
   return (
     <>
-    {
+    {loading ? (
+      <div className="loading-screen">
+        <h2>Loading...</h2>
+      </div>
+    ) : (
       askForUsername ? (
           <div className="modal">
             <div className="modal-box">
@@ -944,8 +990,7 @@ export default function VideoMeetingPage() {
         )}
       </div>
       )
-    }
-
+    )}
     </>
   )
 }
