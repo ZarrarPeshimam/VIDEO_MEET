@@ -1,7 +1,7 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { UserContext } from "../contexts/userContext";
 
 export default function LoginPage() {
@@ -10,7 +10,24 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useContext(UserContext);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
+
+  // Check for redirect path on component mount
+  useEffect(() => {
+    const savedRedirectPath = localStorage.getItem('redirectAfterLogin');
+    
+    // Get redirect path from state (if navigated from protected route)
+    const stateRedirectPath = location.state?.from;
+    
+    // Use path from state or localStorage
+    if (stateRedirectPath) {
+      setRedirectPath(stateRedirectPath);
+    } else if (savedRedirectPath) {
+      setRedirectPath(savedRedirectPath);
+    }
+  }, [location]);
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -35,6 +52,15 @@ export default function LoginPage() {
             // localStorage.setItem("user", JSON.stringify(response.data));
             if(response.data.token){
                 localStorage.setItem("token", response.data.token);
+                
+                // Store user data for offline access
+                const userData = {
+                  id: response.data.data._id || response.data.data.id,
+                  name: response.data.data.name,
+                  email: response.data.data.email,
+                  token: response.data.token
+                };
+                localStorage.setItem("userData", JSON.stringify(userData));
             }
             setUser(response.data);
             if(rememberMe){
@@ -42,9 +68,15 @@ export default function LoginPage() {
             }else{
                 localStorage.removeItem("rememberMe");
             }
-            navigate('/home');  
+            
+            // Clear the redirectAfterLogin from localStorage after using it
+            if (redirectPath) {
+                localStorage.removeItem('redirectAfterLogin');
+                navigate(redirectPath);
+            } else {
+                navigate('/home');
+            }
         }
-
     }catch(err: any){
       console.log(err);
       // Display the error message from the API response
@@ -60,10 +92,21 @@ export default function LoginPage() {
     setPassword("");
   };
 
-return (
+  // Show a message if the user was redirected from a meeting
+  const wasMeetingRedirected = redirectPath && redirectPath.includes('meeting');
+
+  return (
     <div className="flex items-center justify-center min-h-screen bg-[url('/background.png')] bg-cover text-white">
         <div className="w-full max-w-md p-8 rounded-lg bg-transparent border-2 border-white shadow-cyan-500 shadow-lg ">
             <h2 className="text-2xl font-bold text-center mb-6">Login</h2>
+            
+            {/* Add message when redirected from meeting */}
+            {wasMeetingRedirected && (
+              <div className="bg-blue-900/70 p-3 rounded-md mb-4 text-center">
+                You need to be logged in to join a meeting. Please login to continue.
+              </div>
+            )}
+            
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>

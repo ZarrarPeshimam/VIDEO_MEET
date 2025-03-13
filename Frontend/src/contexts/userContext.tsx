@@ -32,6 +32,8 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       try {
         return JSON.parse(savedUser);
       } catch (e) {
+
+        // localStorage.removeItem('userData');
         return null;
       }
     }

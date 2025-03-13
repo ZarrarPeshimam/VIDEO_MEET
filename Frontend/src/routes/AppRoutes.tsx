@@ -15,7 +15,11 @@ export default function AppRoutes() {
         <Route path="/" element={<StartPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/meeting/:meetingId" element={<VideoMeetingPage />} />
+        <Route path="/meeting/:meetingId" element={
+          <ProtectedRoute>
+            <VideoMeetingPage />
+          </ProtectedRoute>
+        } />
         <Route path="/home" element={
           <ProtectedRoute>
             <HomePage />
@@ -27,8 +31,12 @@ export default function AppRoutes() {
             <HistoryPage />
           </ProtectedRoute>
         } />
-        {/* Keep this generic route as a fallback, but make it more specific than "/:url" */}
-        <Route path="/:url" element={<VideoMeetingPage />} />
+        {/* Update the generic route to also be protected */}
+        <Route path="/:url" element={
+          <ProtectedRoute>
+            <VideoMeetingPage />
+          </ProtectedRoute>
+        } />
       </Routes>
     </Router>
   )

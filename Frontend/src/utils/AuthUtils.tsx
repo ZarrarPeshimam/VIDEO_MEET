@@ -45,13 +45,16 @@ export const useAuthCheck = () => {
             const userData = response.data.data;
             console.log("User data found:", userData);
             
-            // Store user data in context
-            setUser({
+            // Store user data in context and localStorage
+            const userInfo = {
               id: userData._id || userData.id,
               name: userData.name,
               email: userData.email,
               token: token
-            });
+            };
+            
+            setUser(userInfo);
+            localStorage.setItem('userData', JSON.stringify(userInfo));
             setIsAuthenticated(true);
           } else {
             console.warn("Auth response has unexpected structure:", response.data);
@@ -117,4 +120,45 @@ export const getUserName = () => {
     }
   }
   return null;
+};
+
+// Add new function to validate meeting access
+export const validateMeetingAccess = async (meetingId: string) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return { success: false, message: 'Authentication required' };
+    }
+
+    // Call the API to check if this user can access this meeting
+    const response = await axios.get(
+      `${import.meta.env.VITE_BASE_URL}/meetings/${meetingId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    if (response.data.success) {
+      return { success: true, meetingData: response.data.data };
+    } else {
+      return { success: false, message: response.data.message || 'Meeting access denied' };
+    }
+  } catch (error: any) {
+    console.error("Failed to validate meeting access:", error);
+    
+    // Check for specific error responses
+    if (error.response) {
+      if (error.response.status === 401) {
+        return { success: false, message: 'Authentication required' };
+      } else if (error.response.status === 403) {
+        return { success: false, message: 'You do not have access to this meeting' };
+      } else if (error.response.status === 404) {
+        return { success: false, message: 'Meeting not found' };
+      }
+    }
+    
+    return { success: false, message: 'An error occurred while validating meeting access' };
+  }
 };

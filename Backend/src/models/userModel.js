@@ -16,6 +16,14 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
+  },
+  profilePicture: {
+    type: String,
+    default: null
+  },
+  lastLogin: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
