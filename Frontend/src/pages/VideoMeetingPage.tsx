@@ -47,8 +47,12 @@ const peerConfigConnection: RTCConfiguration = {
       credential: "muazkh",
       username: "webrtc@live.com"
     }
-  ]
+  ],
+  iceCandidatePoolSize: 10 // Add this to improve connection establishment
 };
+
+// Store connections globally to prevent recreation
+const connectionsStore: ConnectionsType = {};
 
 // Extending Window interface to include localStream property
 declare global {
@@ -85,6 +89,11 @@ export default function VideoMeetingPage() {
   const [videos, setVideos] = useState<VideoStream[]>([]);
   const [localStreamReady, setLocalStreamReady] = useState<boolean>(false);
   const pendingConnectionsRef = useRef<string[]>([]);
+  const connectionsRef = useRef<ConnectionsType>(connectionsStore);
+  
+  // Add ref to track if video state was updated
+  const videoUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVideoUpdateRef = useRef<number>(0);
   
   // Add missing refs
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -199,12 +208,12 @@ export default function VideoMeetingPage() {
     }
     
     // Create new RTCPeerConnection if it doesn't exist
-    if (!connections[clientId]) {
+    if (!connectionsRef.current[clientId]) {
       console.log("Creating new RTCPeerConnection for:", clientId);
-      connections[clientId] = new RTCPeerConnection(peerConfigConnection);
+      connectionsRef.current[clientId] = new RTCPeerConnection(peerConfigConnection);
       
       // Handle ICE candidates
-      connections[clientId].onicecandidate = (event) => {
+      connectionsRef.current[clientId].onicecandidate = (event) => {
         if (event.candidate && socketRef.current) {
           console.log("Sending ICE candidate to:", clientId);
           socketRef.current.emit(
@@ -216,8 +225,8 @@ export default function VideoMeetingPage() {
       };
       
       // Track ICE connection state changes
-      connections[clientId].oniceconnectionstatechange = () => {
-        const connectionState = connections[clientId].iceConnectionState;
+      connectionsRef.current[clientId].oniceconnectionstatechange = () => {
+        const connectionState = connectionsRef.current[clientId].iceConnectionState;
         console.log(`ICE connection state for ${clientId}: ${connectionState}`);
         
         // Handle failed connections with retry logic
@@ -228,8 +237,8 @@ export default function VideoMeetingPage() {
             // Wait a bit before retrying
             setTimeout(() => {
               // Close the old connection
-              connections[clientId].close();
-              delete connections[clientId];
+              connectionsRef.current[clientId].close();
+              delete connectionsRef.current[clientId];
               
               // Increment retry count
               setConnectionRetryCount(prev => ({
@@ -246,49 +255,54 @@ export default function VideoMeetingPage() {
         }
       };
       
-      // Handle remote stream
-      connections[clientId].onaddstream = (event) => {
-        console.log("Received stream from:", clientId, event.stream);
+      // Handle remote stream with debounced updates
+      connectionsRef.current[clientId].ontrack = (event) => {
+        console.log("Received track from:", clientId, event.streams[0]);
         
-        setVideos((prevVideos) => {
-          const existing = prevVideos.find(v => v.socketId === clientId);
-          if (existing) {
-            console.log("Video already exists for:", clientId);
-            return prevVideos;
+        // Use the first stream
+        const remoteStream = event.streams[0];
+        if (!remoteStream) return;
+        
+        // Use time-based debouncing for video updates
+        const now = Date.now();
+        if (now - lastVideoUpdateRef.current < 300) {
+          // If we recently updated videos, debounce this update
+          if (videoUpdateTimeoutRef.current) {
+            clearTimeout(videoUpdateTimeoutRef.current);
           }
           
-          console.log("Adding new video for:", clientId);
-          return [
-            ...prevVideos,
-            {
-              socketId: clientId,
-              stream: event.stream,
-              autoPlay: true,
-              playsInline: true,
-            },
-          ];
-        });
+          videoUpdateTimeoutRef.current = setTimeout(() => {
+            addRemoteStream(clientId, remoteStream);
+            lastVideoUpdateRef.current = Date.now();
+          }, 300);
+        } else {
+          // It's been a while since last update, do it immediately
+          addRemoteStream(clientId, remoteStream);
+          lastVideoUpdateRef.current = now;
+        }
       };
       
-      // Add local stream to the new connection
+      // Add local stream to the new connection using tracks (modern approach)
       try {
         if (window.localStream) {
-          console.log("Adding local stream to new connection:", clientId);
-          connections[clientId].addStream(window.localStream);
+          console.log("Adding local tracks to new connection:", clientId);
+          window.localStream.getTracks().forEach(track => {
+            connectionsRef.current[clientId].addTrack(track, window.localStream);
+          });
         }
       } catch (err) {
-        console.error("Error adding stream to new connection:", err);
+        console.error("Error adding tracks to new connection:", err);
       }
     }
     
     // If createOffer flag is true, create an offer
     if (createOffer && window.localStream) {
       console.log("Creating offer for:", clientId);
-      connections[clientId]
+      connectionsRef.current[clientId]
         .createOffer()
         .then((description) => {
           console.log("Setting local description for:", clientId);
-          connections[clientId]
+          connectionsRef.current[clientId]
             .setLocalDescription(description)
             .then(() => {
               console.log("Sending signal to:", clientId);
@@ -296,7 +310,7 @@ export default function VideoMeetingPage() {
                 "signal",
                 clientId,
                 JSON.stringify({
-                  sdp: connections[clientId].localDescription,
+                  sdp: connectionsRef.current[clientId].localDescription,
                 })
               );
             })
@@ -306,9 +320,48 @@ export default function VideoMeetingPage() {
     }
   };
 
+  // Helper function to add remote stream with proper state management
+  const addRemoteStream = (clientId: string, remoteStream: MediaStream) => {
+    console.log("Adding/updating remote stream for client:", clientId);
+    
+    setVideos((prevVideos) => {
+      // Check if we already have this client's video
+      const existingIndex = prevVideos.findIndex(v => v.socketId === clientId);
+      
+      if (existingIndex >= 0) {
+        // Update existing video stream if needed
+        const currentVideo = prevVideos[existingIndex];
+        
+        // Check if the stream is different before updating
+        if (currentVideo.stream !== remoteStream) {
+          const updatedVideos = [...prevVideos];
+          updatedVideos[existingIndex] = {
+            ...currentVideo,
+            stream: remoteStream
+          };
+          return updatedVideos;
+        }
+        return prevVideos; // No change needed
+      } else {
+        // Add new video
+        return [
+          ...prevVideos,
+          {
+            socketId: clientId,
+            stream: remoteStream,
+            autoPlay: true,
+            playsInline: true,
+          },
+        ];
+      }
+    });
+  };
+
   const getUserMediaSuccess = (stream: MediaStream) => {
     try {
-      window.localStream.getTracks().forEach((track) => track.stop());
+      if (window.localStream) {
+        window.localStream.getTracks().forEach((track) => track.stop());
+      }
     } catch (err) {
       console.log(err);
     }
@@ -317,24 +370,41 @@ export default function VideoMeetingPage() {
       localVideoRef.current.srcObject = stream;
     }
 
-    for (let peerId in connections) {
+    for (let peerId in connectionsRef.current) {
       if (peerId === socketRef.current.id) {
         continue;
       }
-      connections[peerId].addStream(window.localStream);
-      connections[peerId].createOffer().then((description) => {
-        connections[peerId]
+      
+      // Use addTrack instead of addStream (which is deprecated)
+      try {
+        // Remove any existing tracks first
+        const senders = connectionsRef.current[peerId].getSenders();
+        senders.forEach(sender => {
+          connectionsRef.current[peerId].removeTrack(sender);
+        });
+        
+        // Add new tracks
+        stream.getTracks().forEach(track => {
+          connectionsRef.current[peerId].addTrack(track, stream);
+        });
+      } catch (e) {
+        console.error("Error updating tracks for peer:", peerId, e);
+      }
+      
+      connectionsRef.current[peerId].createOffer().then((description) => {
+        connectionsRef.current[peerId]
           .setLocalDescription(description)
           .then(() => {
             socketRef.current.emit(
               "signal",
               peerId,
-              JSON.stringify({ sdp: connections[peerId].localDescription })
+              JSON.stringify({ sdp: connectionsRef.current[peerId].localDescription })
             );
           })
           .catch((err) => console.log(err));
       });
     }
+    
     stream.getTracks().forEach(
       (track) =>
         (track.onended = () => {
@@ -355,20 +425,20 @@ export default function VideoMeetingPage() {
           if (localVideoRef.current) {
             localVideoRef.current.srcObject = window.localStream;
           }
-          for (let peerId in connections) {
+          for (let peerId in connectionsRef.current) {
             if (peerId === socketRef.current.id) {
               continue;
             }
-            connections[peerId].removeStream(window.localStream);
-            connections[peerId].createOffer().then((description) => {
-              connections[peerId]
+            connectionsRef.current[peerId].removeStream(window.localStream);
+            connectionsRef.current[peerId].createOffer().then((description) => {
+              connectionsRef.current[peerId]
                 .setLocalDescription(description)
                 .then(() => {
                   socketRef.current.emit(
                     "signal",
                     peerId,
                     JSON.stringify({
-                      sdp: connections[peerId].localDescription,
+                      sdp: connectionsRef.current[peerId].localDescription,
                     })
                   );
                 })
@@ -423,15 +493,20 @@ export default function VideoMeetingPage() {
   const gotMessageFromServer = (fromId: string, message: string) => {
     const signal = JSON.parse(message);
     if (fromId !== socketIdRef.current) {
+      // Make sure connection exists
+      if (!connectionsRef.current[fromId]) {
+        createConnectionForClient(fromId, false);
+      }
+      
       if (signal.sdp) {
-        connections[fromId]
+        connectionsRef.current[fromId]
           .setRemoteDescription(new RTCSessionDescription(signal.sdp))
           .then(() => {
             if (signal.sdp.type === "offer") {
-              connections[fromId]
+              connectionsRef.current[fromId]
                 .createAnswer()
                 .then((description) => {
-                  connections[fromId]
+                  connectionsRef.current[fromId]
                     .setLocalDescription(description)
                     .then(() => {
                       if (socketRef.current) {
@@ -439,7 +514,7 @@ export default function VideoMeetingPage() {
                           "signal",
                           fromId,
                           JSON.stringify({
-                            sdp: connections[fromId].localDescription,
+                            sdp: connectionsRef.current[fromId].localDescription,
                           })
                         );
                       }
@@ -453,7 +528,7 @@ export default function VideoMeetingPage() {
       }
 
       if (signal.ice) {
-        connections[fromId]
+        connectionsRef.current[fromId]
           .addIceCandidate(new RTCIceCandidate(signal.ice))
           .catch((e) => console.log(e));
       }
@@ -587,9 +662,9 @@ export default function VideoMeetingPage() {
       console.log("User left:", id);
       
       // Close and clean up the connection
-      if (connections[id]) {
-        connections[id].close();
-        delete connections[id];
+      if (connectionsRef.current[id]) {
+        connectionsRef.current[id].close();
+        delete connectionsRef.current[id];
       }
       
       setVideos((prevVideos) => prevVideos.filter((video) => video.socketId !== id));
@@ -688,14 +763,14 @@ export default function VideoMeetingPage() {
     // Update screen sharing state
     setIsScreenSharing(true);
 
-    for(let peerId in connections){
+    for(let peerId in connectionsRef.current){
       if(peerId === socketRef.current.id){
         continue;
       }
-      connections[peerId].addStream(window.localStream);
-      connections[peerId].createOffer().then(description => {
-        connections[peerId].setLocalDescription(description).then(() => {
-          socketRef.current.emit("signal", peerId, JSON.stringify({sdp: connections[peerId].localDescription}));
+      connectionsRef.current[peerId].addStream(window.localStream);
+      connectionsRef.current[peerId].createOffer().then(description => {
+        connectionsRef.current[peerId].setLocalDescription(description).then(() => {
+          socketRef.current.emit("signal", peerId, JSON.stringify({sdp: connectionsRef.current[peerId].localDescription}));
         }).catch(err => console.error("Error: ", err));
       }).catch(err => console.error("Error: ", err));
     }
@@ -1095,206 +1170,207 @@ export default function VideoMeetingPage() {
     };
   }, []);
 
+  // Optimize the VideoMeetingPage render to prevent unnecessary updates
   return (
     <>
-    {loading ? (
-      <div className="loading-screen">
-        <h2>Loading...</h2>
-      </div>
-    ) : !isAuthenticated ? (
-      <div className="auth-error-screen">
-        <Alert severity="error">
-          You must be logged in to join this meeting.
-        </Alert>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={() => navigate('/login')}
-          sx={{ mt: 2 }}
-        >
-          Go to Login
-        </Button>
-      </div>
-    ) : meetingAccessError ? (
-      <div className="meeting-error-screen">
-        <Alert severity="error">
-          {meetingAccessError}
-        </Alert>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={() => navigate('/home')}
-          sx={{ mt: 2 }}
-        >
-          Return to Home
-        </Button>
-      </div>
-    ) : askForUsername ? (
-        <div className="modal">
-          <div className="modal-box">
-            <h1>Enter your username</h1>
-            <TextField
-              label="Username"
-              variant="outlined"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <Button variant="contained" onClick={connect}>
-              Connect
-            </Button>
-          </div>
+      {loading ? (
+        <div className="loading-screen">
+          <h2>Loading...</h2>
         </div>
-    ): (
-      <div className='main-root-container'>
-      {socketError && socketRetries >= MAX_SOCKET_RETRIES && (
-        <div className="socket-error-banner">
-          <Alert severity="error" onClose={() => setSocketError(null)}>
-            Connection error: {socketError}. Please check your internet connection and try refreshing the page.
+      ) : !isAuthenticated ? (
+        <div className="auth-error-screen">
+          <Alert severity="error">
+            You must be logged in to join this meeting.
           </Alert>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={() => navigate('/login')}
+            sx={{ mt: 2 }}
+          >
+            Go to Login
+          </Button>
         </div>
-      )}
-      <div className='video-meeting-page-container'>
-          <div className="main-video-container">
-            <div 
-              className="local-video-container"
-              ref={localVideoContainerRef}
-            >
-              <video
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`local-video ${isScreenSharing ? 'screen-share' : ''}`}
-              ></video>
-            </div>
-            <div 
-              className="remote-video-container"
-              ref={remoteVideoContainerRef}
-            >
-              {videos.length === 0 ? (
-                <div className="no-remote-videos">
-                  <p>No other participants</p>
-                </div>
-              ) : (
-                videos.map((video, index) => (
-                  <video
-                    key={index}
-                    data-socket-id={video.socketId}
-                    ref={(ref) => {
-                      if (ref && video.stream) {
-                        ref.srcObject = video.stream;
-                      }}}
-                    autoPlay
-                    playsInline
-                    className={`remote-video ${video.isScreenShare ? 'screen-share' : ''}`}
-                  ></video>
-                ))
-              )}
-            </div>
-          </div>
-          <div className="main-chat-container">
-            <div className="chat-header">
-              <h2>In-Call Messages</h2>
-            </div>
-            <div className="chat-security-info">
-              <p>Message can only be seen by people in the call and are deleted when the call ends</p>
-            </div>
-            <div className="chat-display" ref={chatDisplayRef}>
-            {messages.map((msg, index) => {
-              // Format timestamp
-              const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-              
-              return (
-                <div key={index} className={`message ${msg.sender === username ? 'my-message' : 'other-message'}`}>
-                  <div className="message-header">
-                    <span className="message-sender">{msg.sender === username ? 'You' : msg.sender}</span>
-                    <span className="message-time">{timestamp}</span>
-                  </div>
-                  <p className="message-content">{msg.data}</p>
-                </div>
-              );
-            })}
-            </div>
-            <div className="chat-input">
-              <input 
-                type="text" 
-                placeholder="Type a message" 
-                className='outline-none text-white w-60'
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && message.trim() && sendMessage()}
+      ) : meetingAccessError ? (
+        <div className="meeting-error-screen">
+          <Alert severity="error">
+            {meetingAccessError}
+          </Alert>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={() => navigate('/home')}
+            sx={{ mt: 2 }}
+          >
+            Return to Home
+          </Button>
+        </div>
+      ) : askForUsername ? (
+          <div className="modal">
+            <div className="modal-box">
+              <h1>Enter your username</h1>
+              <TextField
+                label="Username"
+                variant="outlined"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
-              <i 
-                className="fas fa-paper-plane cursor-pointer" 
-                onClick={() => message.trim() && sendMessage()}
-              ></i>
+              <Button variant="contained" onClick={connect}>
+                Connect
+              </Button>
             </div>
           </div>
-          <div className="icon-container">
-            <IconButton className='icon-button' onClick={handleVideo}>
-              {
-                video ? <VideocamIcon fontSize="medium" /> : <VideocamOffIcon fontSize="medium" />
-              }
-            </IconButton>
-            <IconButton className='icon-button' onClick={handleAudio}>
-              {
-                audio ? <MicIcon fontSize="medium" /> : <MicOffIcon fontSize="medium" />
-              }
-            </IconButton>
+      ): (
+        <div className='main-root-container'>
+        {socketError && socketRetries >= MAX_SOCKET_RETRIES && (
+          <div className="socket-error-banner">
+            <Alert severity="error" onClose={() => setSocketError(null)}>
+              Connection error: {socketError}. Please check your internet connection and try refreshing the page.
+            </Alert>
+          </div>
+        )}
+        <div className='video-meeting-page-container'>
+            <div className="main-video-container">
+              <div 
+                className="local-video-container"
+                ref={localVideoContainerRef}
+              >
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`local-video ${isScreenSharing ? 'screen-share' : ''}`}
+                ></video>
+              </div>
+              <div 
+                className="remote-video-container"
+                ref={remoteVideoContainerRef}
+              >
+                {videos.length === 0 ? (
+                  <div className="no-remote-videos">
+                    <p>No other participants</p>
+                  </div>
+                ) : (
+                  videos.map((video) => (
+                    <video
+                      key={video.socketId}
+                      data-socket-id={video.socketId}
+                      ref={(ref) => {
+                        if (ref && video.stream && ref.srcObject !== video.stream) {
+                          ref.srcObject = video.stream;
+                        }}}
+                      autoPlay
+                      playsInline
+                      className={`remote-video ${video.isScreenShare ? 'screen-share' : ''}`}
+                    ></video>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="main-chat-container">
+              <div className="chat-header">
+                <h2>In-Call Messages</h2>
+              </div>
+              <div className="chat-security-info">
+                <p>Message can only be seen by people in the call and are deleted when the call ends</p>
+              </div>
+              <div className="chat-display" ref={chatDisplayRef}>
+              {messages.map((msg, index) => {
+                // Format timestamp
+                const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                return (
+                  <div key={index} className={`message ${msg.sender === username ? 'my-message' : 'other-message'}`}>
+                    <div className="message-header">
+                      <span className="message-sender">{msg.sender === username ? 'You' : msg.sender}</span>
+                      <span className="message-time">{timestamp}</span>
+                    </div>
+                    <p className="message-content">{msg.data}</p>
+                  </div>
+                );
+              })}
+              </div>
+              <div className="chat-input">
+                <input 
+                  type="text" 
+                  placeholder="Type a message" 
+                  className='outline-none text-white w-60'
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && message.trim() && sendMessage()}
+                />
+                <i 
+                  className="fas fa-paper-plane cursor-pointer" 
+                  onClick={() => message.trim() && sendMessage()}
+                ></i>
+              </div>
+            </div>
+            <div className="icon-container">
+              <IconButton className='icon-button' onClick={handleVideo}>
+                {
+                  video ? <VideocamIcon fontSize="medium" /> : <VideocamOffIcon fontSize="medium" />
+                }
+              </IconButton>
+              <IconButton className='icon-button' onClick={handleAudio}>
+                {
+                  audio ? <MicIcon fontSize="medium" /> : <MicOffIcon fontSize="medium" />
+                }
+              </IconButton>
 
-            <IconButton className='icon-button' onClick={handleScreen}>
-              {
-                isScreenSharing ? <CancelPresentationIcon fontSize="medium" /> : <PresentToAllIcon fontSize="medium" />
-              }
-            </IconButton >
-            <IconButton className='icon-button call-end' style={{ backgroundColor: 'red', color: 'white' }} onClick={handleEndCall}>
-              <CallEndIcon fontSize="medium" />
-            </IconButton>
-            <IconButton className='icon-button' onClick={() => participentModal ? closeParticipantModal() : setParticipentModal(true)}>
-              <ChatIcon fontSize="medium" />
-            </IconButton >
-            <IconButton className='icon-button' onClick={() => participentModal ? closeParticipantModal() : setParticipentModal(true)}>
-              <PeopleIcon fontSize="medium" />
-            </IconButton>
-            <IconButton className='icon-button'>
-              <ThreeDotsIcon fontSize="medium" />
-            </IconButton>
-          </div>
-      </div>
-      {participentModal && (
-        <div className={`main-participent-container ${isClosing ? 'closing' : ''}`}>
-          <div className="participent-header">
-            <h2 className='text-xl pl-1'>People</h2>
-            <i className="fa-solid fa-xmark cursor-pointer" onClick={closeParticipantModal}></i>
-          </div>
-          <div className="add-people">
-          <i className="fa-solid fa-user-plus"></i>
-          <p>Add People</p>
-          </div>
-          <p className='pl-8 text-white mt-7 opacity-80 text-xs'>IN THE MEETING</p>
-          <div className="people-in-meeting">
-            <div className="people-header">
-              <p>Contributor</p>
-              <p>5</p>
-              <i className="fa-solid fa-angle-up"></i>
-              <i className="fa-solid fa-angle-down"></i>
+              <IconButton className='icon-button' onClick={handleScreen}>
+                {
+                  isScreenSharing ? <CancelPresentationIcon fontSize="medium" /> : <PresentToAllIcon fontSize="medium" />
+                }
+              </IconButton >
+              <IconButton className='icon-button call-end' style={{ backgroundColor: 'red', color: 'white' }} onClick={handleEndCall}>
+                <CallEndIcon fontSize="medium" />
+              </IconButton>
+              <IconButton className='icon-button' onClick={() => participentModal ? closeParticipantModal() : setParticipentModal(true)}>
+                <ChatIcon fontSize="medium" />
+              </IconButton >
+              <IconButton className='icon-button' onClick={() => participentModal ? closeParticipantModal() : setParticipentModal(true)}>
+                <PeopleIcon fontSize="medium" />
+              </IconButton>
+              <IconButton className='icon-button'>
+                <ThreeDotsIcon fontSize="medium" />
+              </IconButton>
             </div>
-            <div className="people-list">
-              <div className="people py-3 flex items-center text-white ">
-                <div className="people-avatar">
-                  <h2>A</h2>
-                </div>
-                <p className='text-white font-medium ml-4 mr-16'>Ananta Chandra Das</p>
-                <div className="three-dots flex items-center justify-center">
-                <i className="fa-solid fa-ellipsis-vertical"> </i>
+        </div>
+        {participentModal && (
+          <div className={`main-participent-container ${isClosing ? 'closing' : ''}`}>
+            <div className="participent-header">
+              <h2 className='text-xl pl-1'>People</h2>
+              <i className="fa-solid fa-xmark cursor-pointer" onClick={closeParticipantModal}></i>
+            </div>
+            <div className="add-people">
+            <i className="fa-solid fa-user-plus"></i>
+            <p>Add People</p>
+            </div>
+            <p className='pl-8 text-white mt-7 opacity-80 text-xs'>IN THE MEETING</p>
+            <div className="people-in-meeting">
+              <div className="people-header">
+                <p>Contributor</p>
+                <p>5</p>
+                <i className="fa-solid fa-angle-up"></i>
+                <i className="fa-solid fa-angle-down"></i>
+              </div>
+              <div className="people-list">
+                <div className="people py-3 flex items-center text-white ">
+                  <div className="people-avatar">
+                    <h2>A</h2>
+                  </div>
+                  <p className='text-white font-medium ml-4 mr-16'>Ananta Chandra Das</p>
+                  <div className="three-dots flex items-center justify-center">
+                  <i className="fa-solid fa-ellipsis-vertical"> </i>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
+      </div>
       )}
-    </div>
-    )}
     </>
   )
 }
