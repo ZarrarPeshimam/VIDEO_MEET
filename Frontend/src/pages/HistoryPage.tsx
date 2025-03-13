@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import{ useEffect, useState, useRef, useCallback } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
-import { useMeeting } from '@/contexts/meetingContext'
 import "../styles/HomePage.css"
 
 interface Meeting {
@@ -28,12 +27,11 @@ export default function HistoryPage() {
   const [pageSize] = useState(10)
   const [hasMore, setHasMore] = useState(true)
   const observer = useRef<IntersectionObserver | null>(null)
-  const loadingRef = useRef<HTMLDivElement | null>(null)
   
   // Fetch meeting history when component mounts
   useEffect(() => {
     fetchMeetingHistory(1)
-  }, [])
+  },[])
   
   // Handle clicking outside profile dropdown
   useEffect(() => {
@@ -268,7 +266,19 @@ export default function HistoryPage() {
         }
 
         {!loading && !error && meetings.length > 0 && (
-          <div className="meetings-list-container" style={{ maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}>
+          <div className="meetings-list-container" style={{ 
+            maxHeight: "calc(100vh - 200px)", 
+            overflowY: "auto",
+            msOverflowStyle: "none",  /* IE and Edge */
+            scrollbarWidth: "none"    /* Firefox */
+          }}>
+            <style>
+              {`
+                .meetings-list-container::-webkit-scrollbar {
+                  display: none;
+                }
+              `}
+            </style>
             <div className="meetings-list">
               <div className="grid grid-cols-5 font-bold mb-2 p-3 bg-gray-100 rounded sticky top-0">
                 <div>Title</div>

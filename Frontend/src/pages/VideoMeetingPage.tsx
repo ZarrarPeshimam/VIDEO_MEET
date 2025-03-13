@@ -35,8 +35,7 @@ interface VideoStream {
 }
 
 // Add server URL
-const server_url ='http://localhost:3000';
-
+const server_url = import.meta.env.VITE_SERVER_URL;
 // Define peer connection config
 const peerConfigConnection: RTCConfiguration = {
   iceServers: [
@@ -105,6 +104,13 @@ export default function VideoMeetingPage() {
   // Add these state variables to the component
   const [connectionRetryCount, setConnectionRetryCount] = useState<{[key: string]: number}>({});
   const streamReadyRef = useRef<boolean>(false);
+
+  // Add these new state variables near the other state declarations
+  const [socketConnected, setSocketConnected] = useState<boolean>(false);
+  const [socketError, setSocketError] = useState<string | null>(null);
+  const [socketRetries, setSocketRetries] = useState<number>(0);
+  const MAX_SOCKET_RETRIES = 3;
+  const socketRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const closeParticipantModal = () => {
     setIsClosing(true)
@@ -479,35 +485,105 @@ export default function VideoMeetingPage() {
     }
   }, [videos.length, isScreenSharing]);
 
-  // Update socket event handlers for user joining
+  // Replace the connectToSocketServer function with this more robust implementation
   const connectToSocketServer = () => {
     console.log("Connecting to socket server:", server_url);
     
-    // Clean up any existing connection
-    if (socketRef.current) {
-      socketRef.current.offAny();
-      socketRef.current.disconnect();
+    // Clean up any existing socket connection and timeouts
+    if (socketRetryTimeoutRef.current) {
+      clearTimeout(socketRetryTimeoutRef.current);
+      socketRetryTimeoutRef.current = null;
     }
     
-    socketRef.current = io(server_url, { secure: true });
+    if (socketRef.current) {
+      console.log("Cleaning up existing socket connection");
+      socketRef.current.offAny();
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    
+    // Reset socket error state
+    setSocketError(null);
+    
+    try {
+      // Create new socket connection with reconnection options
+      socketRef.current = io(server_url, { 
+        secure: true,
+        reconnection: true,
+        reconnectionAttempts: 3,
+        reconnectionDelay: 1000,
+        timeout: 10000, // Increase timeout to allow for slower connections
+        transports: ['websocket', 'polling'] // Try WebSocket first, fallback to polling
+      });
+      
+      // Track connection status
+      socketRef.current.on("connect", () => {
+        console.log("Connected to socket server with ID:", socketRef.current.id);
+        setSocketConnected(true);
+        setSocketRetries(0); // Reset retry counter on successful connection
+        socketIdRef.current = socketRef.current.id;
+        
+        // Join call room after successful connection
+        socketRef.current.emit("join-call", window.location.href);
+        
+        // Set up all the event handlers after successful connection
+        setupSocketEventHandlers();
+      });
+      
+      // Handle connection errors
+      socketRef.current.on("connect_error", (error: Error) => {
+        console.error("Socket connection error:", error);
+        setSocketError(error.message);
+        
+        // Only attempt auto-reconnect if we haven't exceeded retry limit
+        if (socketRetries < MAX_SOCKET_RETRIES) {
+          console.log(`Connection failed. Retrying (${socketRetries + 1}/${MAX_SOCKET_RETRIES})...`);
+          socketRetryTimeoutRef.current = setTimeout(() => {
+            setSocketRetries(prev => prev + 1);
+            connectToSocketServer();
+          }, 2000); // Wait 2 seconds before retry
+        } else {
+          console.error("Maximum connection retry attempts reached");
+        }
+      });
+      
+      socketRef.current.on("disconnect", (reason: string) => {
+        console.log("Socket disconnected:", reason);
+        setSocketConnected(false);
+        
+        // If the server disconnected us on purpose, don't attempt to reconnect
+        if (reason === 'io server disconnect') {
+          console.log("Server disconnected the socket. Not attempting to reconnect.");
+        }
+      });
+      
+      // Handle connection timeout
+      socketRef.current.on("connect_timeout", () => {
+        console.error("Socket connection timeout");
+        setSocketError("Connection timeout");
+      });
+      
+    } catch (err) {
+      console.error("Error creating socket:", err);
+      setSocketError(err.message || "Failed to create socket connection");
+    }
+  };
 
+  // Move socket event handlers to a separate function for cleaner organization
+  const setupSocketEventHandlers = () => {
+    if (!socketRef.current) return;
+    
     socketRef.current.on("signal", (fromId: string, message: string) => {
       console.log("Signal received from:", fromId);
       gotMessageFromServer(fromId, message);
     });
-
-    // Make sure these event handlers are only registered once
-    socketRef.current.once("connect", () => {
-      console.log("Connected to socket server with ID:", socketRef.current.id);
-      socketRef.current.emit("join-call", window.location.href);
-      socketIdRef.current = socketRef.current.id;
-
-      socketRef.current.on("chat-message", (data: string, sender: string, socketIdSender: string) => {
+    
+    socketRef.current.on("chat-message", (data: string, sender: string, socketIdSender: string) => {
       console.log("Chat message received from:", sender);
       addMessage(data, sender, socketIdSender);
-      });
-
-      socketRef.current.on("user-left", (id: string) => {
+    });
+    
+    socketRef.current.on("user-left", (id: string) => {
       console.log("User left:", id);
       
       // Close and clean up the connection
@@ -517,23 +593,23 @@ export default function VideoMeetingPage() {
       }
       
       setVideos((prevVideos) => prevVideos.filter((video) => video.socketId !== id));
-      });
-
-      socketRef.current.on("user-joined", (userId: string, clients: string[]) => {
+    });
+    
+    socketRef.current.on("user-joined", (userId: string, clients: string[]) => {
       console.log("User joined:", userId, "Current clients:", clients);
-
+      
       if (!clients || !Array.isArray(clients)) {
         console.error("Invalid clients data received:", clients);
         return;
       }
-
+      
       // Create connections for all clients except self
       clients.forEach((clientId) => {
         if (clientId !== socketRef.current.id) {
           createConnectionForClient(clientId);
         }
       });
-
+      
       // If we're the new user, initiate offers to all existing users
       if (userId === socketRef.current.id && streamReadyRef.current) {
         console.log("I'm the new user, initiating connections");
@@ -551,25 +627,10 @@ export default function VideoMeetingPage() {
           }
         });
       }
-      });
-    });
-
-    socketRef.current.on("connect_error", (error: Error) => {
-      console.error("Socket connection error:", error);
-    });
-
-    socketRef.current.on("disconnect", (reason: string) => {
-      console.log("Socket disconnected:", reason);
     });
   };
 
-  useEffect(() => {
-    if (video !== undefined && audio !== undefined) {
-      getUserMedia();
-    }
-  }, [video, audio]);
-
-  // Modify the getMedia function to be more reliable
+  // Update the getMedia function to handle socket errors
   const getMedia = async () => {
     try {
       setVideo(videoAvailable);
@@ -579,7 +640,10 @@ export default function VideoMeetingPage() {
       // Wait a bit to ensure the stream is fully initialized before connecting
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      connectToSocketServer(); // Connect to socket server after media is ready
+      // Make sure component is still mounted before connecting
+      if (streamReadyRef.current) {
+        connectToSocketServer(); // Connect to socket server after media is ready
+      }
     } catch (err) {
       console.error("Error in getMedia:", err);
       // Fall back to a black/silent stream if there's an error
@@ -1013,6 +1077,24 @@ export default function VideoMeetingPage() {
     };
   }, []);
 
+  // Add an additional useEffect for cleanup
+  useEffect(() => {
+    return () => {
+      // Clean up socket retry timeout
+      if (socketRetryTimeoutRef.current) {
+        clearTimeout(socketRetryTimeoutRef.current);
+        socketRetryTimeoutRef.current = null;
+      }
+      
+      // Clean up socket
+      if (socketRef.current) {
+        socketRef.current.offAny();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <>
     {loading ? (
@@ -1064,6 +1146,13 @@ export default function VideoMeetingPage() {
         </div>
     ): (
       <div className='main-root-container'>
+      {socketError && socketRetries >= MAX_SOCKET_RETRIES && (
+        <div className="socket-error-banner">
+          <Alert severity="error" onClose={() => setSocketError(null)}>
+            Connection error: {socketError}. Please check your internet connection and try refreshing the page.
+          </Alert>
+        </div>
+      )}
       <div className='video-meeting-page-container'>
           <div className="main-video-container">
             <div 
