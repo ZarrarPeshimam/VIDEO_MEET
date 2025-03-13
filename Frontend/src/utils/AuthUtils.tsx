@@ -26,7 +26,7 @@ export const useAuthCheck = () => {
           return;
         }
         
-        // Try to get user data using the token - use /profile instead of /me
+        // Try to get user data using the token
         try {
           const response = await axios.get(
             `${import.meta.env.VITE_BASE_URL}/users/profile`,
@@ -37,9 +37,14 @@ export const useAuthCheck = () => {
             }
           );
           
-          // The user data is in response.data.data, not response.data.user
-          if (response.data && response.data.success && response.data.data) {
+          // Fix: Improved log and condition check
+          console.log("Auth response received:", response.data);
+          
+          // Check if we have response data in the expected structure
+          if (response.data && response.data.success === true && typeof response.data.data === 'object') {
             const userData = response.data.data;
+            console.log("User data found:", userData);
+            
             // Store user data in context
             setUser({
               id: userData._id || userData.id,
@@ -49,7 +54,7 @@ export const useAuthCheck = () => {
             });
             setIsAuthenticated(true);
           } else {
-            console.warn("Auth response missing user data:", response.data);
+            console.warn("Auth response has unexpected structure:", response.data);
             // Try to use any stored user data if available
             const storedUserData = localStorage.getItem('userData');
             if (storedUserData) {
@@ -78,6 +83,7 @@ export const useAuthCheck = () => {
               setUser(userData);
               setIsAuthenticated(true);
             } catch (e) {
+                console.error("Error parsing stored user data:", e);
               localStorage.removeItem('token');
               localStorage.removeItem('userData');
               setIsAuthenticated(false);
@@ -106,6 +112,7 @@ export const getUserName = () => {
       const user = JSON.parse(userData);
       return user.name;
     } catch (e) {
+        console.error("Error parsing stored user data:", e);
       return null;
     }
   }

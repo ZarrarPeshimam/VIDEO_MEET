@@ -6,6 +6,7 @@ import HomePage from '@/pages/HomePage'
 import VideoMeetingPage from '@/pages/VideoMeetingPage'
 import FeedbackPage from '@/pages/FeedbackPage'
 import HistoryPage from '@/pages/HistoryPage'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function AppRoutes() {
   return (
@@ -15,9 +16,17 @@ export default function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/meeting/:meetingId" element={<VideoMeetingPage />} />
-        <Route path="/home" element={<HomePage />} />
+        <Route path="/home" element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        } />
         <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/history" element={
+          <ProtectedRoute>
+            <HistoryPage />
+          </ProtectedRoute>
+        } />
         {/* Keep this generic route as a fallback, but make it more specific than "/:url" */}
         <Route path="/:url" element={<VideoMeetingPage />} />
       </Routes>
