@@ -12,17 +12,15 @@ import {
     CarouselPrevious,
   } from "@/components/ui/carousel"
 import { useMeeting } from '@/contexts/meetingContext';
+import Navbar from '@/components/Navbar';
   
 
 export default function HomePage() {
     const navigate = useNavigate();
-    const {user, setUser} = useContext(UserContext);
-    const [current, setCurrent] = React.useState(0)
-    const [count, setCount] = React.useState(0)
-    const [showProfile, setShowProfile] = useState(false)
+    const {user} = useContext(UserContext);
     const [meetingCode, setMeetingCode] = useState('')
     const meeting = useMeeting();
-
+    
     // Check authentication on component mount
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -31,64 +29,6 @@ export default function HomePage() {
         }
     }, [navigate]);
    
-    // Add this effect after other useEffect hooks
-    React.useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as HTMLElement;
-            if (!target.closest('.profile-picture') && !target.closest('.profile-content')) {
-                setShowProfile(false);
-            }
-        };
-
-        document.addEventListener('click', handleClickOutside);
-        return () => {
-            document.removeEventListener('click', handleClickOutside);
-        };
-    }, []);
-
-    const handleLogout = async () => {
-        try {
-            const token = localStorage.getItem('token') || user?.token;
-            
-            if (!token) {
-                console.log("No token found");
-                setUser(null);
-                localStorage.clear();
-                navigate('/');
-                return;
-            }
-    
-            const response = await axios.post(
-                `${import.meta.env.VITE_BASE_URL}/users/logout`, 
-                {}, 
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
-    
-            if (response.status === 200) {
-                console.log("User logged out successfully");
-                localStorage.clear();
-                setUser(null);
-                navigate('/');
-            }
-        } catch (err) {
-            console.error("Logout error:", err);
-            // Still clear local data even if server request fails
-            localStorage.clear();
-            setUser(null);
-            navigate('/');
-        }
-    }
-
-    // Navigate to history page
-    const navigateToHistory = (event: React.MouseEvent) => {
-        event.stopPropagation(); // Prevent this from triggering other click handlers
-        navigate('/history');
-    };
-    
     // Create a new meeting
     const handleNewMeeting = async () => {
         try {
@@ -138,110 +78,154 @@ export default function HomePage() {
     };
 
   return (
-    <div>
-        <div className="nav-bar">
-            <div className="nav-bar-left-content">
-                <h2 className='cursor-pointer text-xl font-medium'>VideoMeet</h2>
-            </div>
-            <div className="nav-bar-right-content text-lg font-normal">
-                <h2>
-                    {new Date().toLocaleString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                    })} . {new Date().toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric'
-                    })} . {new Date().toLocaleString('en-US', {
-                        weekday: 'long'
-                    })}
-                </h2>
-                <i className="fa-solid fa-gear"></i>
-                <i className="fa-solid fa-clock-rotate-left cursor-pointer" onClick={navigateToHistory}></i>
-                <div className="profile-picture" onClick={() => setShowProfile(!showProfile)}>
-                    <h2>A</h2>
-                </div>
-            </div>
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+        {/* Navbar Component */}
+        <Navbar />
 
-        </div>
-        {
-            showProfile && (
-                <div className="profile-content h-52 w-64 border-1 font-medium border-amber-900 bg-background absolute top-16 right-25 rounded-lg z-10 flex flex-col p-2">
-                <div className="manage-history flex items-center gap-4 p-2.5 text-lg cursor-pointer" onClick={navigateToHistory}>
-                    <i className="fa-solid fa-clock-rotate-left"></i>
-                    <h2>History</h2>
-                </div>
-                <div className="manage-customization flex items-center gap-4 p-2.5 text-lg cursor-pointer">
-                    <i className="fa-solid fa-pencil"></i>
-                    <h2>Customize profile</h2>
-                </div>
-                <div className="manage-another-profile flex items-center gap-4 p-2.5 text-lg cursor-pointer">
-                    <i className="fa-solid fa-user-plus"></i>
-                    <h2>Add another account</h2>
-                </div>
-    
-                <div className="manage-logout flex items-center gap-4 p-2.5 text-lg cursor-pointer" onClick={handleLogout}>
-                    <i className="fa-solid fa-right-from-bracket"></i>
-                    <h2>Logout</h2>
-                </div>
-            </div>
-            )
-        }
-
-        <div className="main-containt">
-            <div className="left-side-content">
-                <h2 className='heading font-bold text-4xl'>Premium video meetings </h2>
-                <h2 className='heading font-bold text-4xl'>Now free for everyone</h2>
-                <p className='heading-small mt-8 '>We re-engineered the service we built for secure business meetings,</p>
-                <p className='heading-small '> Google Meet, to make it free and available for all.</p>
-                <div className="start-call-field">
-                    <button className='Start-call-button' onClick={handleNewMeeting}>
-                        <h2><i className="fa-solid fa-square-plus"></i></h2>
-                        New meeting
+        {/* Main Content */}
+        <div className="main-content container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
+            {/* Mobile view - Controls first, image second */}
+            <div className="sm:hidden flex flex-col items-center gap-8">
+                {/* Call Controls Section (Mobile) */}
+                <div className="w-full text-center">
+                    <h2 className='heading font-bold text-2xl'>Premium video meetings</h2>
+                    <h2 className='heading font-bold text-2xl'>Now free for everyone</h2>
+                    <p className='heading-small mt-8 text-muted-foreground text-sm'>We re-engineered the service we built for secure business meetings, Google Meet, to make it free and available for all.</p>
+                    
+                    <div className="meeting-controls mt-7 flex flex-col items-center gap-5">
+                        <button className='new-meeting-button w-full' onClick={handleNewMeeting}>
+                            <i className="fa-solid fa-square-plus"></i>
+                            <span>New meeting</span>
                         </button>
-                    <div className="input-link">
-                    <i className="fa-solid fa-keyboard"></i>
-                    <input 
-                        type="text" 
-                        placeholder="Enter a code or link" 
-                        className='outline-none'
-                        value={meetingCode}
-                        onChange={(e) => setMeetingCode(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleJoinMeeting()}
-                    />
+                        
+                        <div className="w-full flex flex-row items-center gap-2">
+                            <div className="meeting-code-input flex-1 flex items-center bg-background border border-input rounded-md px-3 py-2 focus-within:ring-1 focus-within:ring-blue-500">
+                                <i className="fa-solid fa-keyboard text-muted-foreground mr-2"></i>
+                                <input 
+                                    type="text" 
+                                    placeholder="Enter a code or link" 
+                                    className='outline-none flex-1 min-w-0 bg-transparent text-sm'
+                                    value={meetingCode}
+                                    onChange={(e) => setMeetingCode(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleJoinMeeting()}
+                                />
+                            </div>
+                            <button 
+                                className={`join-button whitespace-nowrap px-3 border rounded-md transition-colors ${meetingCode ? 'bg-secondary hover:bg-secondary/80 text-secondary-foreground' : 'bg-muted text-muted-foreground cursor-not-allowed'}`} 
+                                onClick={handleJoinMeeting}
+                                disabled={!meetingCode}
+                            >
+                                Join
+                            </button>
+                        </div>
                     </div>
-                    <button 
-                        className={`Join-button ${meetingCode ? 'active' : ''}`} 
-                        onClick={handleJoinMeeting}
-                        disabled={!meetingCode}
-                    >
-                        <h2>Join</h2>
-                    </button>
                 </div>
-                <p className='hr-line border-b-1 border-black w-10/12 mt-10'></p>
-                <p className='mt-8 text-lg'><span className='text-blue-500 cursor-pointer hover:text-blue-600'>Learn more </span>about Video Meet</p>
+
+                {/* Carousel Section (Mobile) */}
+                <div className="w-full flex flex-col items-center">
+                    <Carousel className='carousel w-full max-w-xs'>
+                        <CarouselContent className='carousel-content flex justify-between items-center'>
+                            <CarouselItem>
+                                <div className='carousel-image h-48 w-48 rounded-full overflow-hidden mx-auto'>
+                                    <img src="./photo2.jpg" alt="Video meeting" className="w-full h-full object-cover" />
+                                </div>
+                            </CarouselItem>
+                            <CarouselItem>
+                                <div className='carousel-image h-48 w-48 rounded-full overflow-hidden mx-auto'>
+                                    <img src="./photo1.jpg" alt="Video meeting" className="w-full h-full object-cover" />
+                                </div>
+                            </CarouselItem>
+                            <CarouselItem>
+                                <div className='carousel-image h-48 w-48 rounded-full overflow-hidden mx-auto'>
+                                    <img src="./photo3.jpg" alt="Video meeting" className="w-full h-full object-cover" />
+                                </div>
+                            </CarouselItem>
+                            <CarouselItem>
+                                <div className='carousel-image h-48 w-48 rounded-full overflow-hidden mx-auto'>
+                                    <img src="./photo4.jpg" alt="Video meeting" className="w-full h-full object-cover" />
+                                </div>
+                            </CarouselItem>
+                        </CarouselContent>
+                        <div className="carousel-controls flex justify-center gap-2 mt-5">
+                            <CarouselPrevious className="static transform-none" />
+                            <CarouselNext className="static transform-none" />
+                        </div>
+                    </Carousel>
+                    <div className="carousel-caption w-full max-w-xs text-center mt-4">
+                        <p className="text-xs sm:text-sm">Click <span className='font-medium text-base'>New meeting</span> to get a link you can send to people you want to meet with</p>
+                    </div>
+                </div>
             </div>
-            <div className="right-side-content w-80 ml-56 mt-28">
-                <Carousel className='carousel '>
-                <CarouselContent className='carousel-content flex justify-between items-center'>
-                    <CarouselItem><div className='h-80 w-80 rounded-full overflow-hidden'>
-                        <img src="./photo2.jpg" alt="" className="w-full h-full object-cover" />
-                        </div></CarouselItem>
-                    <CarouselItem><div className='h-80 w-80  rounded-full overflow-hidden'>
-                        <img src="./photo1.jpg" alt="" className="w-full h-full object-cover" />
-                        </div></CarouselItem>
-                    <CarouselItem><div className='h-80 w-80 rounded-full overflow-hidden'>
-                    <img src="./photo3.jpg" alt="" className="w-full h-full object-cover" />
-                        </div></CarouselItem>
-                    <CarouselItem><div className='h-80 w-80  rounded-full overflow-hidden'>
-                    <img src="./photo4.jpg" alt="" className="w-full h-full object-cover" />
-                        </div></CarouselItem>
-                </CarouselContent>
-                <CarouselPrevious />
-                <CarouselNext/>
-                </Carousel>
-                <div className="carosel-content w-80 items-center text-center ml-2 mt-6">
-                    <p>Click <span className=' font-medium text-lg'>New meeting </span>to get a link you can send to people you want to meet with</p>
+
+            {/* Desktop/tablet view - Side by side layout */}
+            <div className="hidden sm:flex flex-col md:flex-row justify-between items-center gap-8 lg:gap-12">
+                <div className="left-side-content w-full md:w-1/2 text-center md:text-left order-2 md:order-1">
+                    <h2 className='heading font-bold text-2xl sm:text-3xl md:text-3xl lg:text-4xl'>Premium video meetings</h2>
+                    <h2 className='heading font-bold text-2xl sm:text-3xl md:text-3xl lg:text-4xl'>Now free for everyone</h2>
+                    <p className='heading-small mt-6 sm:mt-8 text-muted-foreground text-sm sm:text-base'>We re-engineered the service we built for secure business meetings,</p>
+                    <p className='heading-small text-muted-foreground text-sm sm:text-base'>Google Meet, to make it free and available for all.</p>
+                    
+                    <div className="meeting-controls mt-7 sm:mt-8 flex flex-col sm:flex-row items-center gap-4">
+                        <button className='new-meeting-button sm:w-auto' onClick={handleNewMeeting}>
+                            <i className="fa-solid fa-square-plus"></i>
+                            <span>New meeting</span>
+                        </button>
+                        <div className="meeting-code-input w-full sm:w-auto flex items-center bg-background border border-input rounded-md px-3 py-2 focus-within:ring-1 focus-within:ring-blue-500">
+                            <i className="fa-solid fa-keyboard text-muted-foreground mr-2"></i>
+                            <input 
+                                type="text" 
+                                placeholder="Enter a code or link" 
+                                className='outline-none flex-1 min-w-0 bg-transparent'
+                                value={meetingCode}
+                                onChange={(e) => setMeetingCode(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleJoinMeeting()}
+                            />
+                        </div>
+                        <button 
+                            className={`join-button px-6 border rounded-md transition-colors ${meetingCode ? 'bg-secondary hover:bg-secondary/80 text-secondary-foreground' : 'bg-muted text-muted-foreground cursor-not-allowed'}`} 
+                            onClick={handleJoinMeeting}
+                            disabled={!meetingCode}
+                        >
+                            Join
+                        </button>
+                    </div>
+                    
+                    <div className="mt-6 sm:mt-8 border-b border-border w-full md:w-10/12"></div>
+                    <p className='mt-4 sm:mt-6 text-sm sm:text-base'><span className='text-blue-500 cursor-pointer hover:text-blue-600'>Learn more </span>about Video Meet</p>
+                </div>
+                
+                <div className="right-side-content w-full sm:w-3/4 md:w-1/2 lg:w-5/12 order-1 md:order-2 flex flex-col items-center">
+                    <Carousel className='carousel w-full max-w-xs sm:max-w-sm md:max-w-md'>
+                        <CarouselContent className='carousel-content flex justify-between items-center'>
+                            <CarouselItem>
+                                <div className='carousel-image h-56 w-56 sm:h-64 sm:w-64 md:h-64 md:w-64 lg:h-80 lg:w-80 rounded-full overflow-hidden mx-auto'>
+                                    <img src="./photo2.jpg" alt="Video meeting" className="w-full h-full object-cover" />
+                                </div>
+                            </CarouselItem>
+                            <CarouselItem>
+                                <div className='carousel-image h-56 w-56 sm:h-64 sm:w-64 md:h-64 md:w-64 lg:h-80 lg:w-80 rounded-full overflow-hidden mx-auto'>
+                                    <img src="./photo1.jpg" alt="Video meeting" className="w-full h-full object-cover" />
+                                </div>
+                            </CarouselItem>
+                            <CarouselItem>
+                                <div className='carousel-image h-56 w-56 sm:h-64 sm:w-64 md:h-64 md:w-64 lg:h-80 lg:w-80 rounded-full overflow-hidden mx-auto'>
+                                    <img src="./photo3.jpg" alt="Video meeting" className="w-full h-full object-cover" />
+                                </div>
+                            </CarouselItem>
+                            <CarouselItem>
+                                <div className='carousel-image h-56 w-56 sm:h-64 sm:w-64 md:h-64 md:w-64 lg:h-80 lg:w-80 rounded-full overflow-hidden mx-auto'>
+                                    <img src="./photo4.jpg" alt="Video meeting" className="w-full h-full object-cover" />
+                                </div>
+                            </CarouselItem>
+                        </CarouselContent>
+                        <div className="carousel-controls flex justify-center gap-2 mt-6">
+                            <CarouselPrevious className="static transform-none" />
+                            <CarouselNext className="static transform-none" />
+                        </div>
+                    </Carousel>
+                    <div className="carousel-caption w-full max-w-xs sm:max-w-sm md:max-w-md text-center mt-5">
+                        <p className="text-xs sm:text-sm">Click <span className='font-medium text-base lg:text-lg'>New meeting</span> to get a link you can send to people you want to meet with</p>
+                    </div>
                 </div>
             </div>
         </div>

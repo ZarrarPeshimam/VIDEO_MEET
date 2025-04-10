@@ -469,12 +469,32 @@ export default function VideoMeetingPage() {
 
   const getUserMedia = () => {
     if ((video && videoAvailable) || (audio && audioAvailable)) {
+      // Store current enabled states before getting new stream
+      const previousVideoEnabled = video;
+      const previousAudioEnabled = audio;
+      
       navigator.mediaDevices
         .getUserMedia({
           video: videoAvailable ? video : false,
           audio: audioAvailable ? audio : false,
         })
-        .then(getUserMediaSuccess)
+        .then((stream) => {
+          // Apply previous enabled states to new tracks
+          if (stream.getVideoTracks().length > 0) {
+            stream.getVideoTracks().forEach(track => {
+              track.enabled = previousVideoEnabled;
+            });
+          }
+          
+          if (stream.getAudioTracks().length > 0) {
+            stream.getAudioTracks().forEach(track => {
+              track.enabled = previousAudioEnabled;
+            });
+          }
+          
+          // Continue with the rest of the process
+          getUserMediaSuccess(stream);
+        })
         .catch((err) => {
           console.log(err);
         });
@@ -741,10 +761,33 @@ export default function VideoMeetingPage() {
   };
 
   const handleVideo = () => {
+    // Toggle state for UI
     setVideo(!video);
+    
+    // Apply changes directly to stream tracks
+    if (window.localStream) {
+      const videoTracks = window.localStream.getVideoTracks();
+      if (videoTracks.length > 0) {
+        videoTracks.forEach(track => {
+          track.enabled = !video;
+        });
+      }
+    }
   };
+
   const handleAudio = () => {
+    // Toggle state for UI
     setAudio(!audio);
+    
+    // Apply changes directly to stream tracks
+    if (window.localStream) {
+      const audioTracks = window.localStream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        audioTracks.forEach(track => {
+          track.enabled = !audio;
+        });
+      }
+    }
   };
 
   const getDisplayMediaSuccess = (stream: MediaStream) => {
@@ -863,8 +906,15 @@ export default function VideoMeetingPage() {
     // Add message to local state immediately (don't wait for server echo)
     addMessage(message, username, socketIdRef.current);
     
-    // Emit to other participants
-    socketRef.current.emit("chat-message", message, username);
+    // Check if socket is available before trying to emit
+    if (socketRef.current && socketConnected) {
+      // Emit to other participants
+      socketRef.current.emit("chat-message", message, username);
+    } else {
+      // Add an error message to the chat if socket is disconnected
+      addMessage("Message could not be sent (disconnected)", "System", "system");
+      console.warn("Cannot send message: Socket not connected");
+    }
     
     // Clear input
     setMessage("");

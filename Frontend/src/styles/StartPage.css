@@ -1,107 +1,422 @@
 body,
-html{
-  overflow: hidden;
+html {
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, sans-serif;
 }
-.landingPageContainer{
+
+.landingPageContainer {
   background-image: url("/background.png");
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
+  width: 100%;
   background-repeat: no-repeat;
   background-size: cover;
+  background-position: center;
   color: white;
+  position: relative;
 }
-.landingPageContainer nav{
+
+/* Navbar Styles - Improved and fixed */
+.navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2rem 8rem;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 50;
 }
-.landingPageContainer nav h2{
-  font-size: 1.25rem;
+
+/* Navbar Styles - Fixed for mobile */
+.navbar {
+  /* ...existing code... */
+}
+
+.navLogo h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile menu specific classes */
+.navLink {
+  display: none; /* Ensure it's hidden by default on mobile */
+}
+
+.nav-item {
+  position: relative;
+  padding: 4px 2px;
+  transition: color 0.15s ease, transform 0.15s ease;
   font-weight: 500;
-  cursor: pointer;
 }
-.landingPageContainer nav .navLink{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1.75rem;
-  font-size: 1.2rem;
 
-}
-.landingPageContainer nav .navLink p:hover{
-  cursor: pointer;
-
-}
-.landingPageContainer nav .navLink button{
+.nav-item:after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 0;
   background-color: #FFD700;
-  color: black;
-  padding: 0.25rem 1rem;
+  transition: width 0.15s ease;
+}
+
+.nav-item:hover:after {
+  width: 100%;
+}
+
+.nav-button {
+  background-color: #FFD700;
+  color: #111;
   border: none;
-  border-radius: 5px;
-  font-size: 1.1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
-.landingPageContainer nav .navLink button:hover{
-  background-color: #d9c034;
-  color: black;
+
+.nav-button:hover {
+  background-color: #ffd000;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
-.landingPageMainContent{
+
+/* Mobile Menu Styling - Fixed */
+.menu-backdrop {
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
+
+.mobile-menu {
+  background: rgba(15, 15, 15, 0.95);
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  animation: slideDown 0.2s ease forwards;
+  transform-origin: top;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  padding: 0.75rem 1rem 1rem;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mobile-menu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.mobile-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobile-menu p {
+  color: white;
+  opacity: 0.9;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+  padding: 0.75rem 0.5rem;
+  border-radius: 4px;
+}
+
+.mobile-menu p:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.mobile-menu p:active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.mobile-menu button {
+  background-color: #FFD700;
+  color: #111;
+  border: none;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.mobile-menu button:hover {
+  background-color: #ffd000;
+  transform: translateY(-1px);
+}
+
+.mobile-menu button:active {
+  transform: translateY(1px);
+}
+
+.mobile-menu-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.mobile-menu-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.mobile-menu-button:active {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.landingPageMainContent {
   display: flex;
   align-items: center;
+  min-height: calc(100vh - 80px);
+  padding: 2rem 1rem;
+  gap: 2rem;
 }
-.landingPageMainContent .leftContent{
-  padding: 0 10rem;
-  width: 55vw;
+
+.landingPageMainContent .leftContent {
+  padding: 1rem;
+  width: 100%;
 }
-.landingPageMainContent .leftContent h2{
-  font-size: 2.5rem;
+
+.landingPageMainContent .leftContent h2 {
+  font-size: 2rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  line-height: 2.75rem;
+  line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.landingPageMainContent .leftContent h2 span {
+  color: #FFD700;
+  position: relative;
+  z-index: 1;
+}
 
-.landingPageMainContent .leftContent h2 span{
-  color: #d9bd1f;
+.landingPageMainContent .leftContent h2 span::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 30%;
+  background-color: rgba(255, 215, 0, 0.2);
+  z-index: -1;
+  border-radius: 4px;
 }
-.landingPageMainContent .leftContent p{
-  font-size: 1rem;
-  margin-bottom: 1rem;
+
+.landingPageMainContent .leftContent p {
+  font-size: 1.05rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.9;
+  line-height: 1.6;
 }
-.landingPageMainContent .leftContent button{
+
+.landingPageMainContent .leftContent button {
   background-color: #FFD700;
   color: black;
-  padding: 0.35rem 1.25rem;
-  margin-top: 1.5rem;
+  padding: 0.75rem 1.75rem;
+  margin-top: 1rem;
   border: none;
-  border-radius: 5px;
-  font-size: 1.1rem;
-  font-weight: 500;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
-.landingPageMainContent .leftContent button:hover{
+
+.landingPageMainContent .leftContent button:hover {
   background-color: #d9bd1f;
-  color: black;
-}
-.landingPageMainContent .rightContent{
-  background-image: url("/mobile.png");
-  background-repeat: no-repeat;
-  background-size: contain;
-  height: 70vh;
-  width: 45vw;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
-.box {
-  height: 612px;
-  width: 447px;
+.landingPageMainContent .rightContent {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.box .group {
-  height: 612px;
-  left: 0;
-  position: fixed;
-  top: 0;
-  width: 447px;
+.illustration-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.5rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.illustration-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+}
+
+/* Heading text with no line break */
+.heading-text {
+  word-spacing: 2px;
+  letter-spacing: -0.5px;
+  max-width: 100%;
+}
+
+.heading-text span {
+  display: inline-block;
+}
+
+/* Media Queries for Responsive Design - Updated for navbar */
+@media (min-width: 768px) {
+  .navbar {
+    padding: 1rem 4rem;
+  }
+
+  .landingPageMainContent {
+    padding: 0 2rem;
+  }
+
+  .landingPageMainContent .leftContent {
+    padding: 0 3rem;
+    width: 50%;
+  }
+
+  .landingPageMainContent .leftContent h2 {
+    font-size: 2.5rem;
+    line-height: 1.2;
+  }
+
+  .mobile-menu, .mobile-menu-button {
+    display: none !important; /* Force hide on desktop */
+  }
+}
+
+@media (min-width: 1024px) {
+  .navbar {
+    padding: 1rem 6rem;
+  }
+
+  .landingPageMainContent .leftContent {
+    padding: 0 5rem;
+  }
+
+  .landingPageMainContent .leftContent h2 {
+    font-size: 3rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .navbar {
+    padding: 1rem 8rem;
+  }
+
+  .landingPageMainContent .leftContent {
+    padding: 0 8rem;
+  }
+}
+
+/* Mobile view improvements */
+@media (max-width: 767px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+    position: fixed; /* Change to fixed for better mobile experience */
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    width: 100%;
+  }
+
+  .landingPageContainer {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .landingPageMainContent {
+    padding-top: 70px; /* Add top padding to account for fixed navbar */
+    flex-direction: column;
+    text-align: center;
+    padding: 80px 1.5rem 4rem; /* Adjusted top padding */
+    min-height: auto;
+  }
+
+  .landingPageMainContent .leftContent,
+  .landingPageMainContent .rightContent {
+    width: 100%;
+  }
+
+  .landingPageMainContent .rightContent {
+    margin-top: 2.5rem;
+    padding: 0 1rem;
+  }
+
+  .mobile-menu {
+    position: fixed;
+    top: 59px; /* Precise positioning to match navbar */
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem 1rem;
+    z-index: 45; /* Just below navbar */
+  }
+
+  .heading-text {
+    font-size: 2rem;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .landingPageMainContent .leftContent h2 {
+    font-size: 2rem;
+  }
+
+  .illustration-container {
+    max-height: 300px;
+  }
+}
+
+/* Force hide mobile elements on desktop */
+@media (min-width: 768px) {
+  .mobile-menu, 
+  .mobile-menu-button,
+  .menu-backdrop {
+    display: none !important; 
+  }
+}
+
+/* Force show desktop nav on desktop */
+@media (min-width: 768px) {
+  .navLink {
+    display: flex !important;
+  }
+}
+
+/* Force hide desktop nav on mobile */
+@media (max-width: 767px) {
+  .navLink {
+    display: none !important;
+  }
 }

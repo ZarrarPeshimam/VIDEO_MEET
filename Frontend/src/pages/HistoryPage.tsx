@@ -21,6 +21,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showProfile, setShowProfile] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   // Pagination state
   const [page, setPage] = useState(1)
@@ -50,27 +51,20 @@ export default function HistoryPage() {
 
   // Add this function to de-duplicate and process meetings
   const processMeetings = (meetings: Meeting[]) => {
-    // Create a map to store unique meetings by their ID or another unique identifier
     const uniqueMeetings = new Map();
     
-    // Process each meeting
     meetings.forEach(meeting => {
       const existingMeeting = uniqueMeetings.get(meeting._id);
       
       if (existingMeeting) {
-        // If we already have this meeting, keep the most recent/relevant status
         if (meeting.status === 'completed' && existingMeeting.status === 'ongoing') {
-          // If current is completed and existing is ongoing, replace with completed
           uniqueMeetings.set(meeting._id, meeting);
         }
-        // Otherwise keep the existing one (we prioritize 'completed' over 'ongoing')
       } else {
-        // If it's a new meeting, add it to our map
         uniqueMeetings.set(meeting._id, meeting);
       }
     });
     
-    // Convert back to array and sort by start time (newest first)
     return Array.from(uniqueMeetings.values())
       .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   };
@@ -101,18 +95,15 @@ export default function HistoryPage() {
       if (response.data.success) {
         const newMeetings = response.data.data;
         
-        // Process meetings to handle duplicates
         const processedMeetings = processMeetings(
           currentPage === 1 ? newMeetings : [...meetings, ...newMeetings]
         );
         
         setMeetings(processedMeetings);
         
-        // Use hasMore from the pagination data if available
         if (response.data.pagination) {
           setHasMore(response.data.pagination.hasMore);
         } else {
-          // Fallback to the old method
           setHasMore(newMeetings.length === pageSize);
         }
       } else {
@@ -192,16 +183,13 @@ export default function HistoryPage() {
   }
 
   const joinMeeting = (meetingLink: string) => {
-    // Extract meetingId from the link and navigate to the proper route
     try {
       const url = new URL(meetingLink);
       const pathParts = url.pathname.split('/');
       const meetingId = pathParts[pathParts.length - 1];
       
-      // Navigate within the application instead of opening a new window
       navigate(`/meeting/${meetingId}`);
     } catch (error) {
-      // If meetingLink isn't a valid URL, just use it directly
       const meetingId = meetingLink.split('/').pop() || meetingLink;
       navigate(`/meeting/${meetingId}`);
     }
@@ -212,25 +200,33 @@ export default function HistoryPage() {
   }
 
   return (
-    <div>
-      <div className="nav-bar">
+    <div className="min-h-screen">
+      <div className="nav-bar px-4 py-3 sm:py-4 flex justify-between items-center">
         <div className="nav-bar-left-content">
           <h2 className='cursor-pointer text-xl font-medium' onClick={goToHomePage}>VideoMeet</h2>
         </div>
-        <div className="nav-bar-right-content text-lg font-normal">
-          <h2>
+        <div className="nav-bar-right-content text-base sm:text-lg font-normal hidden sm:flex items-center gap-4">
+          <h2 className="whitespace-nowrap">
             {new Date().toLocaleString('en-US', {
               hour: 'numeric',
               minute: '2-digit',
               hour12: true
-            })} . {new Date().toLocaleString('en-US', {
+            })} · {new Date().toLocaleString('en-US', {
               month: 'short',
               day: 'numeric'
-            })} . {new Date().toLocaleString('en-US', {
+            })} · {new Date().toLocaleString('en-US', {
               weekday: 'long'
             })}
           </h2>
-          <i className="fa-solid fa-gear"></i>
+          <i className="fa-solid fa-gear cursor-pointer"></i>
+          <div className="profile-picture" onClick={() => setShowProfile(!showProfile)}>
+            <h2>A</h2>
+          </div>
+        </div>
+        
+        {/* Mobile menu button */}
+        <div className="sm:hidden flex items-center gap-2">
+          <i className="fa-solid fa-gear cursor-pointer mx-3"></i>
           <div className="profile-picture" onClick={() => setShowProfile(!showProfile)}>
             <h2>A</h2>
           </div>
@@ -238,24 +234,24 @@ export default function HistoryPage() {
       </div>
 
       {showProfile && (
-        <div className="profile-content h-40 w-64 border-1 font-medium border-amber-900 bg-background absolute top-16 right-25 rounded-lg z-10 flex flex-col p-2">
-          <div className="manage-customization flex items-center gap-4 p-2.5 text-lg cursor-pointer">
+        <div className="profile-content h-40 w-64 border border-amber-900 bg-background absolute top-16 right-4 sm:right-25 rounded-lg z-10 flex flex-col p-2 shadow-lg">
+          <div className="manage-customization flex items-center gap-4 p-2.5 text-lg cursor-pointer hover:bg-gray-100 rounded">
             <i className="fa-solid fa-pencil"></i>
             <h2>Customize profile</h2>
           </div>
-          <div className="manage-another-profile flex items-center gap-4 p-2.5 text-lg cursor-pointer">
+          <div className="manage-another-profile flex items-center gap-4 p-2.5 text-lg cursor-pointer hover:bg-gray-100 rounded">
             <i className="fa-solid fa-user-plus"></i>
             <h2>Add another account</h2>
           </div>
-          <div className="manage-logout flex items-center gap-4 p-2.5 text-lg cursor-pointer" onClick={handleLogout}>
+          <div className="manage-logout flex items-center gap-4 p-2.5 text-lg cursor-pointer hover:bg-gray-100 rounded" onClick={handleLogout}>
             <i className="fa-solid fa-right-from-bracket"></i>
             <h2>Logout</h2>
           </div>
         </div>
       )}
 
-      <div className="history-container max-w-6xl mx-auto mt-8 p-4">
-        <h1 className="text-2xl font-bold mb-6">Meeting History</h1>
+      <div className="history-container max-w-6xl mx-auto mt-4 sm:mt-8 p-4">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Meeting History</h1>
         
         {loading && page === 1 && <p className="text-center py-4">Loading your meeting history...</p>}
         
@@ -269,8 +265,8 @@ export default function HistoryPage() {
           <div className="meetings-list-container" style={{ 
             maxHeight: "calc(100vh - 200px)", 
             overflowY: "auto",
-            msOverflowStyle: "none",  /* IE and Edge */
-            scrollbarWidth: "none"    /* Firefox */
+            msOverflowStyle: "none",
+            scrollbarWidth: "none"
           }}>
             <style>
               {`
@@ -280,7 +276,8 @@ export default function HistoryPage() {
               `}
             </style>
             <div className="meetings-list">
-              <div className="grid grid-cols-5 font-bold mb-2 p-3 bg-gray-100 rounded sticky top-0">
+              {/* Desktop header */}
+              <div className="hidden sm:grid grid-cols-5 font-bold mb-2 p-3 bg-gray-100 rounded sticky top-0">
                 <div>Title</div>
                 <div>Date & Time</div>
                 <div>Duration</div>
@@ -293,17 +290,14 @@ export default function HistoryPage() {
                 const endTime = meeting.status === 'completed' ? new Date(meeting.endTime) : new Date();
                 let durationMinutes = 0;
                 
-                // Calculate accurate duration based on status
+                // Calculate duration
                 if (meeting.status === 'completed') {
-                  // For completed meetings, use actual start/end time
                   const durationMs = endTime.getTime() - startTime.getTime();
                   durationMinutes = Math.max(0, Math.round(durationMs / (1000 * 60)));
                 } else if (meeting.status === 'ongoing') {
-                  // For ongoing meetings, calculate from start to now
                   const durationMs = Date.now() - startTime.getTime();
                   durationMinutes = Math.max(0, Math.round(durationMs / (1000 * 60)));
                 } else {
-                  // For scheduled meetings, use the planned duration
                   const durationMs = new Date(meeting.endTime).getTime() - startTime.getTime();
                   durationMinutes = Math.max(0, Math.round(durationMs / (1000 * 60)));
                 }
@@ -315,38 +309,84 @@ export default function HistoryPage() {
                   <div 
                     key={meeting._id} 
                     ref={isLastItem ? lastMeetingRef : null}
-                    className="grid grid-cols-5 p-3 border-b hover:bg-gray-50"
+                    className="border-b hover:bg-gray-50"
                   >
-                    <div>
-                      <p className="font-medium">{meeting.title}</p>
-                      {meeting.description && <p className="text-sm text-gray-600">{meeting.description}</p>}
+                    {/* Desktop view */}
+                    <div className="hidden sm:grid sm:grid-cols-5 p-3">
+                      <div>
+                        <p className="font-medium">{meeting.title}</p>
+                        {meeting.description && <p className="text-sm text-gray-600">{meeting.description}</p>}
+                      </div>
+                      <div>{formatDate(meeting.startTime)}</div>
+                      <div>{durationMinutes} minutes</div>
+                      <div>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          meeting.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          meeting.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
+                          meeting.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {meeting.status}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        {meeting.status === 'scheduled' && (
+                          <button 
+                            onClick={() => joinMeeting(meeting.meetingLink)}
+                            className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                          >
+                            Join
+                          </button>
+                        )}
+                        {meeting.status === 'completed' && (
+                          <button className="text-gray-700 bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm">
+                            View Details
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div>{formatDate(meeting.startTime)}</div>
-                    <div>{durationMinutes} minutes</div>
-                    <div>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        meeting.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        meeting.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                        meeting.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {meeting.status}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      {meeting.status === 'scheduled' && (
-                        <button 
-                          onClick={() => joinMeeting(meeting.meetingLink)}
-                          className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-                        >
-                          Join
-                        </button>
-                      )}
-                      {meeting.status === 'completed' && (
-                        <button className="text-gray-700 bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm">
-                          View Details
-                        </button>
-                      )}
+                    
+                    {/* Mobile view */}
+                    <div className="sm:hidden p-4 flex flex-col gap-2">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-medium">{meeting.title}</h3>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          meeting.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          meeting.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
+                          meeting.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {meeting.status}
+                        </span>
+                      </div>
+                      
+                      {meeting.description && 
+                        <p className="text-sm text-gray-600">{meeting.description}</p>
+                      }
+                      
+                      <div className="text-sm text-gray-600">
+                        {formatDate(meeting.startTime)}
+                      </div>
+                      
+                      <div className="text-sm">
+                        Duration: {durationMinutes} minutes
+                      </div>
+                      
+                      <div className="flex gap-2 mt-2">
+                        {meeting.status === 'scheduled' && (
+                          <button 
+                            onClick={() => joinMeeting(meeting.meetingLink)}
+                            className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm flex-1"
+                          >
+                            Join Meeting
+                          </button>
+                        )}
+                        {meeting.status === 'completed' && (
+                          <button className="text-gray-700 bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm flex-1">
+                            View Details
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

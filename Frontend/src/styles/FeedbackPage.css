@@ -9,37 +9,60 @@
     font-weight: 500;
 }
 .button-return{
-    background-color: rgb(72, 134, 234);
-    color: #fff;
+    background-color: transparent;
+    color: #4a90e2;
+    border: 1px solid #4a90e2;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+.button-return:hover {
+    background-color: rgba(74, 144, 226, 0.1);
 }
 .button-rejoin{
-    border: 1px solid rgb(72, 134, 234);
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+.button-rejoin:hover {
+    background-color: #3a80d2;
 }
 
 
 
 .timer-circle {
     position: relative;
-    width: 2rem;
-    height: 2rem;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
+    background: conic-gradient(#4a90e2 var(--progress), #e0e0e0 0);
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
 .timer-circle::before {
-    content: "";
+    content: '';
     position: absolute;
-    inset: 0;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
-    background: conic-gradient(#3b82f6 var(--progress), transparent var(--progress));
-    mask: radial-gradient(transparent 60%, black 61%);
-    -webkit-mask: radial-gradient(transparent 60%, black 61%);
+    background-color: #fff;
 }
 
 .timer-content {
+    position: relative;
     z-index: 1;
+    font-size: 16px;
     font-weight: 500;
 }
 
@@ -72,17 +95,18 @@
 }
 
 .submit-feedback-button{
-    padding: 0.5rem 1.5rem;
-    border-radius: 2rem;
-    background-color: rgb(72, 134, 234);
-    color: #fff;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
     font-weight: 500;
     cursor: pointer;
-    margin-top: 0.75rem;
+    transition: all 0.2s ease-in-out;
 }
-.submit-feedback-button:hover{
-    background-color: rgb(46, 113, 220);
-    color: #fff;
+.submit-feedback-button:hover {
+    background-color: #3a80d2;
 }
 .submit-feedback-button:active{
     background-color: rgb(77, 125, 202);
@@ -95,4 +119,27 @@
 .skip-button:hover{
     color: rgb(72, 134, 234);
     font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .timer-circle {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .timer-circle::before {
+    width: 25px;
+    height: 25px;
+  }
+  
+  .timer-content {
+    font-size: 14px;
+  }
+  
+  .button-rejoin,
+  .button-return,
+  .submit-feedback-button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
 }

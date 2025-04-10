@@ -1,153 +1,203 @@
-.nav-bar{
+/* Main content */
+.main-content {
+    max-width: 1280px;
+    min-height: calc(100vh - 69px);
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Heading typography */
+.heading {
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+}
+
+.heading-small {
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+}
+
+/* Meeting controls */
+.meeting-controls {
+    width: 100%;
+}
+
+.new-meeting-button {
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background-color: #2563eb; /* Blue-600 */
+    color: white;
+    padding: 0.5rem 1rem; /* Reduced from 0.75rem to 0.5rem */
+    border-radius: 0.375rem;
+    display: flex;
     align-items: center;
-    padding: 0.75rem 6rem;
-    box-shadow: 0 0.1rem 1rem rgba(34, 34, 34, 0.1);
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.5rem; /* Changed from min-height to fixed height */
+    min-width: 9rem; /* Minimum width to prevent shrinking too much */
+    white-space: nowrap; /* Prevent text wrapping */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.main-containt{
-    display: flex;
-    justify-content: start;
-    align-items: start;
-    height: 100vh;
+.dark .new-meeting-button {
+    background-color: #3b82f6; /* Blue-500 for dark mode */
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
-.nav-bar-right-content{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 33%;
+.new-meeting-button:hover {
+    opacity: 0.9;
 }
 
-.profile-picture{
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background-color: #815050;
-    cursor: pointer;
+.new-meeting-button:active {
+    transform: scale(0.98);
+}
+
+.meeting-code-input {
+    flex-grow: 1;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    min-width: 0; /* Prevent flex item from overflowing */
+    height: 2.5rem; /* Standardized height */
+}
+
+.meeting-code-input input {
+    font-size: 0.875rem;
+    width: 100%;
+    height: 100%; /* Fill the container height */
+    padding: 0; /* Remove default padding */
+}
+
+.meeting-code-input:focus-within {
+    border-color: #3b82f6; /* Blue-500 */
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.join-button {
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    height: 2.5rem; /* Changed from min-height to fixed height */
+    padding: 0.5rem 1rem; /* Reduced padding to match new-meeting-button */
+}
+
+.join-button:not(:disabled):active {
+    transform: scale(0.98);
+}
+
+/* Carousel */
+.carousel {
+    max-width: 100%;
+}
+
+.carousel-image {
+    transition: transform 0.3s ease;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0.75rem;
+}
+
+.carousel-image:hover {
+    transform: scale(1.02);
+}
+
+.carousel-controls {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.carousel-controls button {
+    width: 40px;
+    height: 40px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.3rem;
-    color: #fff;
 }
 
-.profile-content {
-    transform-origin: center;
-    animation: scaleIn 0.35s ease-out;
-    opacity: 0;
-    animation-fill-mode: forwards;
+.carousel-caption {
+    margin-top: 1.25rem;
+    padding: 0 1rem;
+    line-height: 1.5;
 }
 
-@keyframes scaleIn {
-    0% {
+/* Animations */
+@keyframes fadeIn {
+    from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: translateY(-10px) scale(0.98);
     }
-    100% {
+    to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0) scale(1);
     }
 }
 
-.manage-history:hover{
-    background-color: rgb(235, 231, 231);
-    border-radius: 0.75rem;
+/* Media queries for better responsive design */
+@media (max-width: 639px) {
+    .carousel-image {
+        height: 180px;
+        width: 180px;
+    }
+    
+    .carousel-controls {
+        margin-top: 1.25rem;
+    }
+    
+    .carousel-controls button {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .meeting-controls {
+        gap: 1rem;
+        margin-top: 1.5rem;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .new-meeting-button {
+        width: 100%;
+        max-width: 100%;
+        /* Height already standardized at 2.5rem */
+    }
+    
+    .join-button {
+        white-space: nowrap;
+        min-width: 4rem;
+        /* Height already standardized at 2.5rem */
+    }
 }
 
-.manage-customization:hover{
-    background-color: rgb(235, 231, 231);
-    border-radius: 0.75rem;
-}
-.manage-another-profile:hover{
-    background-color: rgb(235, 231, 231);
-    border-radius: 0.75rem;
-}
-.manage-logout:hover{
-    background-color: rgb(235, 231, 231);
-    border-radius: 0.75rem;
-}
-.manage-history:active,
-.manage-customization:active,
-.manage-another-profile:active,
-.manage-logout:active{
-    background-color: rgb(210, 206, 206);
-    border-radius: 0.75rem;
+@media (min-width: 640px) and (max-width: 768px) {
+    .main-content {
+        padding-top: 1.5rem;
+    }
+    
+    .carousel-image {
+        height: 220px;
+        width: 220px;
+    }
 }
 
-.left-side-content{
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    width: 50%;
-    height: 100vh;
-    margin-top: 8rem;
-    padding-left: 8rem;
-}
-.start-call-field{
-    margin-top: 3rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-
-}
-.Start-call-button{
-    color: #fff;
-    font-size: 1.1rem;
-    display: flex;
-    gap: 0.75rem;
-    padding: 0.5rem 0.7rem;
-    background-color: rgb(72, 134, 234);
-    border-radius: 0.25rem;
-    cursor: pointer;
-}
-.Start-call-button:hover{
-    background-color: rgb(43, 112, 222);
-}
-.Start-call-button:active{
-    background-color: rgb(72, 134, 234);
+@media (min-width: 769px) and (max-width: 1023px) {
+    .main-content {
+        padding-top: 2rem;
+    }
 }
 
-
-
-.input-link{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    /* color: #fff; */
-    color: rgb(70, 67, 67);
-    font-size: 1.1rem;
-    font-weight: 500;
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.5rem 0.7rem;
-    /* background-color: rgb(72, 134, 234); */
-    border: 1px solid rgb(90, 86, 86);
-    border-radius: 0.25rem;
+@media (min-width: 1024px) {
+    .main-content {
+        padding-top: 2rem;
+        min-height: calc(100vh - 73px);
+    }
 }
 
-.Join-button {
-    color: blue;
-    font-size: 1.1rem;
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    opacity: 0.5;
-    transition: opacity 0.3s ease;
+/* Dark mode adjustments */
+.dark .new-meeting-button {
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
-.Join-button.active {
-    opacity: 1;
-    cursor: pointer;
-}
-
-.Join-button.active:hover {
-    font-weight: 500;
-}
-
-.Join-button:disabled {
-    cursor: not-allowed;
+.dark .carousel-image {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
