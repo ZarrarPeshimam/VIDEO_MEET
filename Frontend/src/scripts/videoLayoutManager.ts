@@ -33,6 +33,11 @@ export const updateVideoLayout = (
   container.style.height = '100%';
   container.style.padding = '10px'; // Add padding to prevent videos from touching container edge
   
+  // Get container dimensions for responsive sizing
+  const containerRect = container.getBoundingClientRect();
+  const isMobile = containerRect.width < 500;
+  const isTablet = containerRect.width >= 500 && containerRect.width < 900;
+  
   if (isScreenSharing) {
     // If screen sharing, find the screen sharing video and make it full size
     const screenShareVideo = Array.from(videos).find(
@@ -47,9 +52,21 @@ export const updateVideoLayout = (
           video.style.height = '100%';
           video.style.objectFit = 'contain';
           video.style.zIndex = '10';
+          video.style.backgroundColor = '#000'; // Black background for screen shares
         } else {
-          // Hide other videos during screen sharing
-          video.style.display = 'none';
+          // On mobile, completely hide other videos during screen sharing
+          if (isMobile) {
+            video.style.display = 'none';
+          } else {
+            // On larger screens, make them small thumbnails
+            video.style.width = '20%';
+            video.style.position = 'absolute';
+            video.style.bottom = '10px';
+            video.style.right = '10px';
+            video.style.zIndex = '15';
+            video.style.borderRadius = '8px';
+            video.style.border = '1px solid white';
+          }
         }
       });
       
@@ -88,41 +105,74 @@ export const updateVideoLayout = (
     container.style.display = 'grid';
     
     // Calculate grid dimensions based on aspect ratio of container
-    const containerRect = container.getBoundingClientRect();
     const containerWidth = containerRect.width - 20; // Account for padding
     const containerHeight = containerRect.height - 20; // Account for padding
     const containerAspect = containerWidth / containerHeight;
     
-    // Determine optimal grid layout based on number of videos
+    // Determine optimal grid layout based on number of videos and device type
     let cols: number, rows: number;
     
     if (videoCount === 2) {
-      // 2 videos side by side
-      cols = 2;
-      rows = 1;
+      if (isMobile || containerAspect < 0.8) {
+        // Stack vertically on narrow screens
+        cols = 1;
+        rows = 2;
+      } else {
+        // Side by side on wider screens
+        cols = 2;
+        rows = 1;
+      }
     } else if (videoCount === 3 || videoCount === 4) {
-      // 3-4 videos: 2x2 grid
-      cols = 2;
-      rows = 2;
+      if (isMobile) {
+        // Stack more on mobile
+        cols = 1;
+        rows = videoCount;
+      } else if (isTablet) {
+        // 2x2 grid on tablet
+        cols = 2;
+        rows = Math.ceil(videoCount / 2);
+      } else {
+        // 2x2 grid on desktop
+        cols = 2;
+        rows = 2;
+      }
     } else if (videoCount <= 6) {
-      // 5-6 videos: 3x2 grid
-      cols = 3;
-      rows = 2;
+      if (isMobile) {
+        // Single column on mobile
+        cols = 1;
+        rows = videoCount;
+      } else if (isTablet) {
+        // 2x3 grid on tablet
+        cols = 2;
+        rows = Math.ceil(videoCount / 2);
+      } else {
+        // 3x2 grid on desktop
+        cols = 3;
+        rows = 2;
+      }
     } else if (videoCount <= 9) {
-      // 7-9 videos: 3x3 grid
-      cols = 3;
-      rows = 3;
-    } else if (videoCount <= 12) {
-      // 10-12 videos: 4x3 grid
-      cols = 4;
-      rows = 3;
-    } else if (videoCount <= 16) {
-      // 13-16 videos: 4x4 grid
-      cols = 4;
-      rows = 4;
+      if (isMobile) {
+        // 2 columns on mobile for more than 6
+        cols = 2;
+        rows = Math.ceil(videoCount / 2);
+      } else if (isTablet) {
+        // 2x5 grid max on tablet
+        cols = 2;
+        rows = Math.ceil(videoCount / 2);
+      } else {
+        // 3x3 grid on desktop
+        cols = 3;
+        rows = 3;
+      }
     } else {
-      // More than 16 videos: calculate based on aspect ratio
-      if (containerAspect > 1) {
+      // For more videos, calculate based on aspect ratio and device
+      if (isMobile) {
+        cols = 2;
+        rows = Math.ceil(videoCount / 2);
+      } else if (isTablet) {
+        cols = 3;
+        rows = Math.ceil(videoCount / 3);
+      } else if (containerAspect > 1) {
         // Wider than tall
         cols = Math.ceil(Math.sqrt(videoCount * containerAspect));
         rows = Math.ceil(videoCount / cols);
@@ -137,16 +187,12 @@ export const updateVideoLayout = (
     container.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
     container.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
     
-    // Calculate unused variables for potential future use
-    const cellWidth = containerWidth / cols;
-    const cellHeight = containerHeight / rows;
-    
     // Apply styles to ensure videos display properly within grid cells
     Array.from(videos).forEach((video) => {
       // Override default video styles for grid layout
       video.style.width = '100%';
       video.style.height = '100%';
-      video.style.aspectRatio = '16/9'; // Maintain video aspect ratio
+      video.style.aspectRatio = isMobile ? 'auto' : '16/9'; // Don't force aspect ratio on mobile
       video.style.objectFit = 'cover';
       video.style.borderRadius = '8px';
       video.style.border = '1px solid rgba(255, 255, 255, 0.1)';
@@ -166,6 +212,15 @@ export const markAsScreenShare = (
 ): void => {
   if (videoElement) {
     (videoElement as CustomHTMLVideoElement).dataset.isScreenShare = isScreenShare.toString();
+    
+    // Add visual enhancements for screen sharing
+    if (isScreenShare) {
+      videoElement.style.objectFit = 'contain';
+      videoElement.style.backgroundColor = '#000'; // Black background for screen shares
+    } else {
+      videoElement.style.objectFit = 'cover';
+      videoElement.style.backgroundColor = '';
+    }
   }
 };
 
@@ -182,27 +237,55 @@ export const updateLocalVideoPosition = (
 ): void => {
   if (!localVideoContainer) return;
   
+  // Check screen size for responsive positioning
+  const isMobile = window.innerWidth < 480;
+  const isTablet = window.innerWidth >= 480 && window.innerWidth < 768;
+  
   if (remoteVideoCount === 0) {
     // If no remote videos, make local video large and centered
-    localVideoContainer.style.width = '70%';
-    localVideoContainer.style.height = '70vh';
+    localVideoContainer.style.width = isMobile ? '85%' : '70%';
+    localVideoContainer.style.height = 'auto';
     localVideoContainer.style.position = 'static';
     localVideoContainer.style.margin = '0 auto';
+    localVideoContainer.style.aspectRatio = '16/9';
   } else if (isScreenSharing) {
     // During screen sharing, make local video a small picture-in-picture
-    localVideoContainer.style.width = '15vw';
+    if (isMobile) {
+      localVideoContainer.style.width = '40vw';
+      localVideoContainer.style.right = '0.5rem';
+      localVideoContainer.style.bottom = '0.5rem';
+    } else if (isTablet) {
+      localVideoContainer.style.width = '25vw';
+      localVideoContainer.style.right = '1rem';
+      localVideoContainer.style.bottom = '1rem';
+    } else {
+      localVideoContainer.style.width = '15vw';
+      localVideoContainer.style.right = '3rem';
+      localVideoContainer.style.bottom = '3rem';
+    }
     localVideoContainer.style.height = 'auto';
     localVideoContainer.style.position = 'absolute';
-    localVideoContainer.style.right = '3rem';
-    localVideoContainer.style.bottom = '3rem';
     localVideoContainer.style.zIndex = '100';
+    localVideoContainer.style.boxShadow = '0 2px 10px rgba(0,0,0,0.4)';
+    localVideoContainer.style.transition = 'all 0.3s ease';
   } else {
-    // Default position for local video
-    localVideoContainer.style.width = '15vw';
+    // Default position for local video based on screen size
+    if (isMobile) {
+      localVideoContainer.style.width = '40vw';
+      localVideoContainer.style.right = '0.5rem';
+      localVideoContainer.style.bottom = '0.5rem';
+    } else if (isTablet) {
+      localVideoContainer.style.width = '25vw';
+      localVideoContainer.style.right = '1rem';
+      localVideoContainer.style.bottom = '1rem';
+    } else {
+      localVideoContainer.style.width = '15vw';
+      localVideoContainer.style.right = '3rem';
+      localVideoContainer.style.bottom = '3rem';
+    }
     localVideoContainer.style.height = 'auto';
     localVideoContainer.style.position = 'absolute';
-    localVideoContainer.style.right = '3rem';
-    localVideoContainer.style.bottom = '3rem';
     localVideoContainer.style.zIndex = '100';
+    localVideoContainer.style.boxShadow = '0 2px 10px rgba(0,0,0,0.4)';
   }
 };

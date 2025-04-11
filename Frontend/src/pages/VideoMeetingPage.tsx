@@ -121,6 +121,9 @@ export default function VideoMeetingPage() {
   const MAX_SOCKET_RETRIES = 3;
   const socketRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Add state for chat visibility on mobile
+  const [isChatVisible, setIsChatVisible] = useState<boolean>(false);
+
   const closeParticipantModal = () => {
     setIsClosing(true)
     timeoutRef.current = setTimeout(() => {
@@ -580,6 +583,39 @@ export default function VideoMeetingPage() {
     }
   }, [videos.length, isScreenSharing]);
 
+  // Add this function to toggle chat visibility on mobile
+  const toggleChatVisibility = () => {
+    setIsChatVisible(!isChatVisible);
+    // Reset new message counter when opening chat
+    if (!isChatVisible) {
+      setNewMessages(0);
+    }
+  };
+
+  // Add useEffect to handle resize events
+  useEffect(() => {
+    const handleResize = () => {
+      // Reset chat visibility on larger screens
+      if (window.innerWidth > 768 && isChatVisible) {
+        setIsChatVisible(false);
+      }
+      
+      // Update video layouts
+      if (remoteVideoContainerRef.current) {
+        updateVideoLayout(remoteVideoContainerRef.current, videos.length, isScreenSharing);
+      }
+      
+      if (localVideoContainerRef.current) {
+        updateLocalVideoPosition(localVideoContainerRef.current, videos.length, isScreenSharing);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [videos.length, isScreenSharing, isChatVisible]);
+
   // Replace the connectToSocketServer function with this more robust implementation
   const connectToSocketServer = () => {
     console.log("Connecting to socket server:", server_url);
@@ -810,12 +846,29 @@ export default function VideoMeetingPage() {
       if(peerId === socketRef.current.id){
         continue;
       }
-      connectionsRef.current[peerId].addStream(window.localStream);
-      connectionsRef.current[peerId].createOffer().then(description => {
-        connectionsRef.current[peerId].setLocalDescription(description).then(() => {
-          socketRef.current.emit("signal", peerId, JSON.stringify({sdp: connectionsRef.current[peerId].localDescription}));
+      
+      // Use addTrack instead of addStream (which is deprecated)
+      try {
+        // Remove any existing tracks first
+        const senders = connectionsRef.current[peerId].getSenders();
+        senders.forEach(sender => {
+          connectionsRef.current[peerId].removeTrack(sender);
+        });
+        
+        // Add new tracks
+        stream.getTracks().forEach(track => {
+          connectionsRef.current[peerId].addTrack(track, stream);
+        });
+        
+        // Create and send an offer
+        connectionsRef.current[peerId].createOffer().then(description => {
+          connectionsRef.current[peerId].setLocalDescription(description).then(() => {
+            socketRef.current.emit("signal", peerId, JSON.stringify({sdp: connectionsRef.current[peerId].localDescription}));
+          }).catch(err => console.error("Error: ", err));
         }).catch(err => console.error("Error: ", err));
-      }).catch(err => console.error("Error: ", err));
+      } catch (e) {
+        console.error("Error updating tracks for peer:", peerId, e);
+      }
     }
     
     stream.getTracks().forEach(track => track.onended = () => {
@@ -1318,7 +1371,9 @@ export default function VideoMeetingPage() {
                 )}
               </div>
             </div>
-            <div className="main-chat-container">
+            
+            {/* Add className to toggle visibility on mobile */}
+            <div className={`main-chat-container ${isChatVisible ? 'visible' : ''}`}>
               <div className="chat-header">
                 <h2>In-Call Messages</h2>
               </div>
@@ -1356,6 +1411,20 @@ export default function VideoMeetingPage() {
                 ></i>
               </div>
             </div>
+            
+            {/* Add mobile chat toggle button */}
+            {window.innerWidth <= 768 && (
+              <div 
+                className="chat-toggle-button" 
+                onClick={toggleChatVisibility}
+              >
+                <ChatIcon />
+                {newMessages > 0 && (
+                  <span className="new-message-indicator">{newMessages}</span>
+                )}
+              </div>
+            )}
+            
             <div className="icon-container">
               <IconButton className='icon-button' onClick={handleVideo}>
                 {
@@ -1373,12 +1442,20 @@ export default function VideoMeetingPage() {
                   isScreenSharing ? <CancelPresentationIcon fontSize="medium" /> : <PresentToAllIcon fontSize="medium" />
                 }
               </IconButton >
-              <IconButton className='icon-button call-end' style={{ backgroundColor: 'red', color: 'white' }} onClick={handleEndCall}>
+              <IconButton className='icon-button call-end' onClick={handleEndCall}>
                 <CallEndIcon fontSize="medium" />
               </IconButton>
-              <IconButton className='icon-button' onClick={() => participentModal ? closeParticipantModal() : setParticipentModal(true)}>
-                <ChatIcon fontSize="medium" />
-              </IconButton >
+              
+              {/* Only show chat button on larger screens */}
+              {window.innerWidth > 768 && (
+                <IconButton className='icon-button' onClick={() => participentModal ? closeParticipantModal() : setParticipentModal(true)}>
+                  <ChatIcon fontSize="medium" />
+                  {newMessages > 0 && (
+                    <span className="new-message-indicator">{newMessages}</span>
+                  )}
+                </IconButton >
+              )}
+              
               <IconButton className='icon-button' onClick={() => participentModal ? closeParticipantModal() : setParticipentModal(true)}>
                 <PeopleIcon fontSize="medium" />
               </IconButton>
@@ -1401,20 +1478,34 @@ export default function VideoMeetingPage() {
             <div className="people-in-meeting">
               <div className="people-header">
                 <p>Contributor</p>
-                <p>5</p>
+                <p>{videos.length + 1}</p> {/* +1 to include local user */}
                 <i className="fa-solid fa-angle-up"></i>
                 <i className="fa-solid fa-angle-down"></i>
               </div>
               <div className="people-list">
-                <div className="people py-3 flex items-center text-white ">
+                {/* Always show local user */}
+                <div className="people py-3 flex items-center text-white">
                   <div className="people-avatar">
-                    <h2>A</h2>
+                    <h2>{username[0]?.toUpperCase() || 'U'}</h2>
                   </div>
-                  <p className='text-white font-medium ml-4 mr-16'>Ananta Chandra Das</p>
+                  <p className='text-white font-medium ml-4 mr-16'>{username || 'You'} (You)</p>
                   <div className="three-dots flex items-center justify-center">
-                  <i className="fa-solid fa-ellipsis-vertical"> </i>
+                    <i className="fa-solid fa-ellipsis-vertical"></i>
                   </div>
                 </div>
+                
+                {/* Map remote participants */}
+                {videos.map((video, index) => (
+                  <div key={video.socketId} className="people py-3 flex items-center text-white">
+                    <div className="people-avatar">
+                      <h2>P</h2>
+                    </div>
+                    <p className='text-white font-medium ml-4 mr-16'>Participant {index + 1}</p>
+                    <div className="three-dots flex items-center justify-center">
+                      <i className="fa-solid fa-ellipsis-vertical"></i>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

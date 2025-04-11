@@ -6,6 +6,7 @@
     box-sizing: border-box;
     height: 100vh;
     width: 100vw;
+    overflow: hidden;
 }
 
 /* video page conntainer */
@@ -16,27 +17,33 @@
     justify-content: center;
     height: 100vh;
     background-color: #181c14;
+    position: relative;
 }
 
 .main-video-container{
     position: relative;
-
 }
+
 .local-video-container{
     position: absolute;
     width: 15vw;
+    height: auto;
     right: 3rem;
     bottom: 3rem;
     border-radius: 0.75rem;
     z-index: 1;
     overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
 }
+
 .local-video-container video{
     width: 100%;
     height: 100%;
     border-radius: 0.75rem;
     object-fit: cover; /* Makes video cover the container */
 }
+
 .remote-video-container{
     padding: 1rem;
     display: grid;
@@ -84,8 +91,6 @@
     text-align: center;
 }
 
-
-
 /*Main video container*/
 .main-video-container {
     display: flex;
@@ -100,22 +105,21 @@
     box-sizing: border-box;
 }
 
-
-
- /* Chat container stylling */
+/* Chat container stylling */
 .main-chat-container {
     display: flex;
     flex-direction: column;
     background-color: #3c3d37;
     flex: 1;
     height: 90vh;
-    /* border: 1px solid #c3b3a6; */
     border-radius: 0.75rem;
     margin: 0.5rem 0.5rem 0.5rem 0;
     position: relative;
+    transition: all 0.3s ease;
 }
+
 .main-chat-container .chat-header{
-    padding: 0  1.25rem;
+    padding: 0 1.25rem;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -123,6 +127,7 @@
     color: #fff;
     font-size: 1.15rem;
 }
+
 .chat-security-info p{
     color: #fff;
     font-size: 0.8rem;
@@ -132,6 +137,7 @@
     padding: 0.5rem 0.75rem;
     margin: 0.75rem 1rem 0.5rem 1rem;
 }
+
 .main-chat-container .chat-display{
     display: flex;
     flex-direction: column;
@@ -142,9 +148,9 @@
     scrollbar-width: thin;
     scrollbar-color: #5a5b55 #3c3d37;
 }
-/* Add styling for the message items */
+
+/* Message styling */
 .message {
-    /* margin-bottom: 8px; */
     max-width: 95%;
     word-break: break-word;
 }
@@ -156,38 +162,25 @@
     font-size: 1rem;
     margin-bottom: 0.2rem;
 }
+
 .message-header {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-  }
+}
   
-  .message-time {
+.message-time {
     font-size: 0.85rem;
     color: #ccc;
-  }
+}
   
-  .message-content {
+.message-content {
     font-size: 0.92rem;
     margin-bottom: 0.75rem;
-  }
-
-/* .my-message {
-    align-self: flex-end;
-    background-color: #5a5b55;
-    border-radius: 12px 12px 2px 12px;
-    padding: 8px 12px;
 }
 
-.other-message {
-    align-self: flex-start;
-    background-color: #5a5b55;
-    border-radius: 12px 12px 12px 2px;
-    padding: 8px 12px;
-} */
-
-/* Add custom scrollbar styling */
-/* .main-chat-container .chat-display::-webkit-scrollbar {
+/* Scrollbar styling */
+.main-chat-container .chat-display::-webkit-scrollbar {
     width: 6px;
 }
 
@@ -198,7 +191,7 @@
 .main-chat-container .chat-display::-webkit-scrollbar-thumb {
     background-color: #5a5b55;
     border-radius: 6px;
-} */
+}
 
 .chat-input{
     display: flex;
@@ -212,11 +205,10 @@
     color: #fff;
     position: absolute;
     bottom: 1rem;
-    width: 93%;
+    width: calc(100% - 1.5rem);
     z-index: 1;
+    max-width: 93%;
 }
-
-
 
 /* Icon container stylling */
 .icon-container {
@@ -227,25 +219,29 @@
     height: 10vh;
     width: 100%;
     margin: 0 0.5rem;
+    padding: 0.5rem 0;
+    flex-wrap: wrap;
 }
 
 .icon-container .icon-button{
     color: #fff;
     padding: 0.7rem;
     background-color: #5a5b55;
+    transition: all 0.2s ease;
+}
 
+.icon-container .call-end{
+    color: #fff !important;
+    background-color: #ff4d4d !important;
 }
-.icon-container .icon-button .call-end{
-    color: #ff4d4d;
-}
+
 .icon-container .icon-button:hover{
     cursor: pointer;
     background-color: #484a46;
+    transform: scale(1.05);
 }
 
-
-
-/* Participent conntainer stylling */
+/* Participent container stylling */
 .main-participent-container {
     position: absolute;
     background-color: #3c3d37;
@@ -257,8 +253,9 @@
     border-radius: 0.75rem;
     top: 0;
     right: 0;
-    z-index: 1;
+    z-index: 10;
     animation: slideIn 0.5s ease-in;
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes slideIn {
@@ -289,15 +286,15 @@
 
 .main-participent-container .participent-header{
     width: 100%;
-    padding: 0  1.5rem;
+    padding: 0 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
     height: 9%;
     color: #fff;
     font-size: 1.15rem;
-   
 }
+
 .main-participent-container .add-people{
     margin: 1rem 0 0 1.25rem;
     display: flex;
@@ -309,12 +306,13 @@
     background-color: #5a5b55;
     border-radius: 2rem;
     padding: 0.5rem 1rem;
-    
 }
+
 .main-participent-container .add-people:hover{
     cursor: pointer;
     background-color: #484a46;
 }
+
 .main-participent-container .people-in-meeting{
     display: flex;
     padding: 0 1.25rem;
@@ -323,8 +321,8 @@
     border: 1px solid #c3b3a6;
     border-radius: 0.75rem;
     overflow-y: auto;
-    
 }
+
 .main-participent-container .people-in-meeting .people-header{
     display: flex;
     justify-content: space-between;
@@ -334,6 +332,7 @@
     border-bottom: 1px solid #c3b3a6;
     padding-bottom: 0.5rem;
 }
+
 .people-list .people-avatar h2{
     height: 2rem;
     width: 2rem;
@@ -352,9 +351,177 @@
     width: 1.5rem;
     border-radius: 50%;
 }
+
 .people-list .three-dots:hover{
     cursor: pointer;
     background-color: #5a5b55;
+}
+
+/* Socket error banner */
+.socket-error-banner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+/* Loading and error screens */
+.loading-screen,
+.auth-error-screen,
+.meeting-error-screen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    background-color: #181c14;
+    color: white;
+}
+
+/* Mobile toggle button for chat */
+.chat-toggle-button {
+    display: none;
+    position: absolute;
+    bottom: 12vh;
+    right: 1rem;
+    z-index: 100;
+    background-color: #5a5b55;
+    color: white;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* Responsive styles */
+@media (max-width: 992px) {
+    /* Tablet layout */
+    .main-video-container {
+        flex: 2;
+    }
+    
+    .main-chat-container {
+        flex: 1;
+    }
+    
+    .local-video-container {
+        width: 20vw;
+        right: 1.5rem;
+        bottom: 1.5rem;
+    }
+    
+    .main-participent-container {
+        width: 35%;
+    }
+    
+    .icon-container {
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Small tablet / large phone layout */
+    .video-meeting-page-container {
+        flex-direction: column;
+    }
+    
+    .main-video-container {
+        height: 65vh;
+        margin: 0.5rem;
+        flex: none;
+    }
+    
+    .main-chat-container {
+        position: fixed;
+        height: 65vh;
+        width: 90%;
+        bottom: 15vh;
+        right: -100%;
+        margin: 0;
+        z-index: 100;
+        transition: right 0.3s ease;
+        box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+    }
+    
+    .main-chat-container.visible {
+        right: 5%;
+    }
+    
+    .chat-toggle-button {
+        display: flex;
+    }
+    
+    .icon-container {
+        height: 15vh;
+    }
+    
+    .local-video-container {
+        width: 30vw;
+        right: 1rem;
+        bottom: 1rem;
+    }
+    
+    .main-participent-container {
+        width: 80%;
+        height: 65vh;
+        right: 10%;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Mobile phone layout */    
+    .main-video-container {
+        height: 60vh;
+        margin: 0.25rem;
+    }
+    
+    .icon-container {
+        height: 20vh;
+        gap: 0.3rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        padding-top: 0.5rem;
+    }
+    
+    .icon-container .icon-button {
+        padding: 0.5rem;
+        margin: 0.1rem;
+    }
+    
+    .local-video-container {
+        width: 40vw;
+        right: 0.5rem;
+        bottom: 0.5rem;
+    }
+    
+    .main-participent-container {
+        width: 90%;
+        height: 60vh;
+        right: 5%;
+    }
+    
+    .main-chat-container {
+        width: 90%;
+        height: 60vh;
+        bottom: 20vh;
+    }
+    
+    .chat-input {
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .message-sender {
+        font-size: 0.9rem;
+    }
+    
+    .message-content {
+        font-size: 0.85rem;
+    }
 }
 
 

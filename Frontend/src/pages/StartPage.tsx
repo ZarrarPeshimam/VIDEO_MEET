@@ -54,7 +54,7 @@ export default function StartPage() {
                   Register
                 </p>
                 <button
-                  className="nav-button py-2 px-6 rounded-md transition hover:shadow-lg"
+                  className="nav-button px-6 rounded-md transition hover:shadow-lg" // Removed py-2 as it's now in CSS
                   onClick={() => navigate("/login")}
                 >
                   Login
@@ -115,13 +115,15 @@ export default function StartPage() {
         <div className="landingPageMainContent flex-1 flex flex-col md:flex-row items-center">
             <div className='leftContent w-full md:w-1/2 text-center md:text-left'>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-6 heading-text">
-                    <span className="text-yellow-400">Connect</span> with your loved ones...
+                    <span className="nowrap large-screen-first-line">
+                        <span className="highlight text-yellow-400">Connect</span> with your loved
+                    </span> ones...
                 </h2>
                 <p className="text-base sm:text-lg mb-8 max-w-md mx-auto md:mx-0 opacity-90">
                     From ghar ki hasi to dil ki baat, connect with loved ones no matter the distance
                 </p>
                 <button
-                  className="px-6 py-3 rounded-md text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+                  className="px-6 rounded-md text-lg transition-all duration-200 transform hover:scale-105 hover:shadow-md" // Reduced duration from 300 to 200, reduced shadow from lg to md
                   onClick={() => {
                     navigate("/register");
                   }}

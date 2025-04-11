@@ -35,10 +35,6 @@ html {
   z-index: 50;
 }
 
-/* Navbar Styles - Fixed for mobile */
-.navbar {
-  /* ...existing code... */
-}
 
 .navLogo h2 {
   font-size: 1.5rem;
@@ -81,13 +77,15 @@ html {
   border: none;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
 }
 
 .nav-button:hover {
   background-color: #ffd000;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
 }
 
 /* Mobile Menu Styling - Fixed */
@@ -198,25 +196,35 @@ html {
 }
 
 .landingPageMainContent .leftContent {
+  margin-top: 2rem;
   padding: 1rem;
   width: 100%;
 }
 
 .landingPageMainContent .leftContent h2 {
-  font-size: 2rem;
+  font-size: 1.9rem; /* Slightly reduced from 2rem */
   font-weight: 700;
   margin-bottom: 1rem;
-  line-height: 1.2;
+  line-height: 1.3;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  white-space: normal;
+  word-break: keep-all; /* Prevents unwanted breaks */
 }
 
-.landingPageMainContent .leftContent h2 span {
+.landingPageMainContent .leftContent h2 span.highlight {
   color: #FFD700;
   position: relative;
   z-index: 1;
+  display: inline; /* Forces inline display */
+  transition: color 0.3s ease;
 }
 
-.landingPageMainContent .leftContent h2 span::after {
+/* .landingPageMainContent .leftContent h2 span.highlight:hover {
+  color: #FFF;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+} */
+
+.landingPageMainContent .leftContent h2 span.highlight::after {
   content: '';
   position: absolute;
   bottom: 0;
@@ -226,6 +234,17 @@ html {
   background-color: rgba(255, 215, 0, 0.2);
   z-index: -1;
   border-radius: 4px;
+  transition: background-color 0.3s ease, height 0.3s ease;
+}
+
+/* .landingPageMainContent .leftContent h2 span.highlight:hover::after {
+  background-color: rgba(255, 215, 0, 0.4);
+  height: 40%;
+} */
+
+.landingPageMainContent .leftContent h2 span.nowrap {
+  white-space: nowrap; /* Keeps text together */
+  display: inline-block; /* Controls wrapping */
 }
 
 .landingPageMainContent .leftContent p {
@@ -233,25 +252,26 @@ html {
   margin-bottom: 1.5rem;
   opacity: 0.9;
   line-height: 1.6;
+  max-width: 500px; /* Control paragraph width */
 }
 
 .landingPageMainContent .leftContent button {
   background-color: #FFD700;
   color: black;
-  padding: 0.75rem 1.75rem;
+  padding: 0.5rem 1.75rem;
   margin-top: 1rem;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .landingPageMainContent .leftContent button:hover {
   background-color: #d9bd1f;
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .landingPageMainContent .rightContent {
@@ -276,9 +296,9 @@ html {
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
 }
 
-/* Heading text with no line break */
+/* Heading text with no line break - Modified */
 .heading-text {
-  word-spacing: 2px;
+  word-spacing: -1px; /* Tightens word spacing to prevent breaks */
   letter-spacing: -0.5px;
   max-width: 100%;
 }
@@ -303,8 +323,9 @@ html {
   }
 
   .landingPageMainContent .leftContent h2 {
-    font-size: 2.5rem;
+    font-size: 2.3rem; /* Reduced from 2.5rem */
     line-height: 1.2;
+    max-width: 100%;
   }
 
   .mobile-menu, .mobile-menu-button {
@@ -322,7 +343,21 @@ html {
   }
 
   .landingPageMainContent .leftContent h2 {
-    font-size: 3rem;
+    font-size: 2.7rem;
+    white-space: normal;
+    margin-bottom: 1.5rem; /* Increased from 1rem for more space between heading and paragraph */
+  }
+  
+  /* Control line breaks for large screens */
+  .large-screen-first-line {
+    display: inline-block;
+  }
+}
+
+@media (max-width: 1023px) {
+  /* Maintain existing line break behavior for medium/small screens */
+  .large-screen-first-line {
+    display: inline; /* Keep default inline behavior */
   }
 }
 
@@ -333,6 +368,11 @@ html {
 
   .landingPageMainContent .leftContent {
     padding: 0 8rem;
+    margin-top: 0; /* Removed margin top for very large screens */
+  }
+  
+  .landingPageMainContent .leftContent h2 {
+    margin-bottom: 2rem; /* Even more space between heading and paragraph on very large screens */
   }
 }
 
