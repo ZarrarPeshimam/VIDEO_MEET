@@ -39,8 +39,8 @@ export default function StartPage() {
         {/* Navigation Bar */}
         <nav className="navbar py-3 px-4 sm:px-6 flex justify-between items-center relative">
             <div className="navLogo">
-              <h2 className="text-2xl font-bold tracking-wide"> 
-                <span className="text-yellow-400">Aura</span>Meet 
+              <h2 className="text-lg font-bold tracking-wide"> 
+                <span className="text-yellow-400">Video</span>Meet 
               </h2>
             </div>
             
