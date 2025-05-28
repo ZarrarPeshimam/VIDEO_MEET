@@ -2,7 +2,7 @@
 
 Premium video conferencing application built with modern web technologies, providing a seamless meeting experience for users across devices.
 
-![VideoMeet Screenshot](.\Frontend\public\screenshot.png)
+![VideoMeet Screenshot](https://github.com/Ananta025/VIDEO_MEET/blob/574fb3c62bfd211917ec66ec7c9cf2dddca2f74a/Frontend/public/screenshot.png)
 
 ## 🚀 Features
 
