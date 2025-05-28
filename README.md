@@ -2,7 +2,7 @@
 
 Premium video conferencing application built with modern web technologies, providing a seamless meeting experience for users across devices.
 
-![VideoMeet Screenshot](Frontend\public\screenshot.png)
+![VideoMeet Screenshot](.\Frontend\public\screenshot.png)
 
 ## 🚀 Features
 
@@ -209,4 +209,4 @@ We welcome contributions to the VideoMeet project! Here's how you can collaborat
 
 ---
 
-Made with ❤️ by Your Ananta
+Made with ❤️ by Ananta
