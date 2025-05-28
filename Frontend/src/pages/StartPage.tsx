@@ -39,7 +39,7 @@ export default function StartPage() {
         {/* Navigation Bar */}
         <nav className="navbar py-3 px-4 sm:px-6 flex justify-between items-center relative">
             <div className="navLogo">
-              <h2 className="text-lg font-bold tracking-wide"> 
+              <h2 className="font-bold tracking-wide"> 
                 <span className="text-yellow-400">Video</span>Meet 
               </h2>
             </div>
@@ -54,7 +54,7 @@ export default function StartPage() {
                   Register
                 </p>
                 <button
-                  className="nav-button px-6 rounded-md transition hover:shadow-lg" // Removed py-2 as it's now in CSS
+                  className="nav-button px-6 rounded-md transition hover:shadow-lg"
                   onClick={() => navigate("/login")}
                 >
                   Login

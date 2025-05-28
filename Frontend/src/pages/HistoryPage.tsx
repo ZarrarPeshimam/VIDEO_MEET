@@ -2,6 +2,7 @@ import{ useEffect, useState, useRef, useCallback } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import "../styles/HomePage.css"
+import Navbar from '../components/Navbar'
 
 interface Meeting {
   _id: string;
@@ -20,8 +21,6 @@ export default function HistoryPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showProfile, setShowProfile] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   // Pagination state
   const [page, setPage] = useState(1)
@@ -34,21 +33,6 @@ export default function HistoryPage() {
     fetchMeetingHistory(1)
   },[])
   
-  // Handle clicking outside profile dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-      if (!target.closest('.profile-picture') && !target.closest('.profile-content')) {
-        setShowProfile(false)
-      }
-    }
-
-    document.addEventListener('click', handleClickOutside)
-    return () => {
-      document.removeEventListener('click', handleClickOutside)
-    }
-  }, [])
-
   // Add this function to de-duplicate and process meetings
   const processMeetings = (meetings: Meeting[]) => {
     const uniqueMeetings = new Map();
@@ -140,36 +124,6 @@ export default function HistoryPage() {
     if (node) observer.current.observe(node);
   }, [loading, hasMore]);
 
-  const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      
-      if (!token) {
-        navigate('/')
-        return
-      }
-  
-      const response = await axios.post(
-        `${import.meta.env.VITE_BASE_URL}/users/logout`, 
-        {}, 
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      )
-  
-      if (response.status === 200) {
-        localStorage.clear()
-        navigate('/')
-      }
-    } catch (err) {
-      console.error("Logout error:", err)
-      localStorage.clear()
-      navigate('/')
-    }
-  }
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString('en-US', {
@@ -195,60 +149,10 @@ export default function HistoryPage() {
     }
   }
 
-  const goToHomePage = () => {
-    navigate('/home')
-  }
-
   return (
     <div className="min-h-screen">
-      <div className="nav-bar px-4 py-3 sm:py-4 flex justify-between items-center">
-        <div className="nav-bar-left-content">
-          <h2 className='cursor-pointer text-xl font-medium' onClick={goToHomePage}>VideoMeet</h2>
-        </div>
-        <div className="nav-bar-right-content text-base sm:text-lg font-normal hidden sm:flex items-center gap-4">
-          <h2 className="whitespace-nowrap">
-            {new Date().toLocaleString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true
-            })} · {new Date().toLocaleString('en-US', {
-              month: 'short',
-              day: 'numeric'
-            })} · {new Date().toLocaleString('en-US', {
-              weekday: 'long'
-            })}
-          </h2>
-          <i className="fa-solid fa-gear cursor-pointer"></i>
-          <div className="profile-picture" onClick={() => setShowProfile(!showProfile)}>
-            <h2>A</h2>
-          </div>
-        </div>
-        
-        {/* Mobile menu button */}
-        <div className="sm:hidden flex items-center gap-2">
-          <i className="fa-solid fa-gear cursor-pointer mx-3"></i>
-          <div className="profile-picture" onClick={() => setShowProfile(!showProfile)}>
-            <h2>A</h2>
-          </div>
-        </div>
-      </div>
-
-      {showProfile && (
-        <div className="profile-content h-40 w-64 border border-amber-900 bg-background absolute top-16 right-4 sm:right-25 rounded-lg z-10 flex flex-col p-2 shadow-lg">
-          <div className="manage-customization flex items-center gap-4 p-2.5 text-lg cursor-pointer hover:bg-gray-100 rounded">
-            <i className="fa-solid fa-pencil"></i>
-            <h2>Customize profile</h2>
-          </div>
-          <div className="manage-another-profile flex items-center gap-4 p-2.5 text-lg cursor-pointer hover:bg-gray-100 rounded">
-            <i className="fa-solid fa-user-plus"></i>
-            <h2>Add another account</h2>
-          </div>
-          <div className="manage-logout flex items-center gap-4 p-2.5 text-lg cursor-pointer hover:bg-gray-100 rounded" onClick={handleLogout}>
-            <i className="fa-solid fa-right-from-bracket"></i>
-            <h2>Logout</h2>
-          </div>
-        </div>
-      )}
+      {/* Replace custom navbar with Navbar component */}
+      <Navbar />
 
       <div className="history-container max-w-6xl mx-auto mt-4 sm:mt-8 p-4">
         <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Meeting History</h1>
