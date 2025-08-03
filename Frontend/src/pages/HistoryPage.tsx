@@ -1,8 +1,42 @@
-import{ useEffect, useState, useRef, useCallback } from 'react'
-import axios from 'axios'
-import { useNavigate } from 'react-router-dom'
-import "../styles/HomePage.css"
-import Navbar from '../components/Navbar'
+import { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Container,
+  Typography,
+  Card,
+  CardContent,
+  CardActions,
+  Button,
+  Chip,
+  Grid,
+  Box,
+  Pagination,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
+  Alert,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
+} from '@mui/material';
+import {
+  PlayArrow as PlayIcon,
+  Download as DownloadIcon,
+  Description as TranscriptIcon,
+  VideoCall as VideoIcon,
+  AccessTime as TimeIcon,
+  People as PeopleIcon,
+  Subtitles as SubtitlesIcon
+} from '@mui/icons-material';
+import axios from 'axios';
+import { UserContext } from '../contexts/userContext';
+import { useAuthCheck } from '../utils/AuthUtils';
+import Navbar from '../components/Navbar';
 
 interface Meeting {
   _id: string;
@@ -10,309 +44,487 @@ interface Meeting {
   description?: string;
   startTime: string;
   endTime: string;
-  meetingLink: string;
-  participants: string[];
-  status: string;
+  status: 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
+  hostId: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  participants: Array<{
+    _id: string;
+    name: string;
+    email: string;
+  }>;
+  recording?: {
+    isRecorded: boolean;
+    recordingUrl: string;
+    recordingSize: number;
+    recordingFormat: string;
+    recordingStartTime: string;
+    recordingEndTime: string;
+  };
+  transcript?: {
+    isGenerated: boolean;
+    transcriptUrl: string;
+    transcriptText: string;
+    vttUrl?: string;
+    duration?: number;
+    generatedAt: string;
+  };
   createdAt: string;
 }
 
-export default function HistoryPage() {
-  const navigate = useNavigate()
-  const [meetings, setMeetings] = useState<Meeting[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  // Pagination state
-  const [page, setPage] = useState(1)
-  const [pageSize] = useState(10)
-  const [hasMore, setHasMore] = useState(true)
-  const observer = useRef<IntersectionObserver | null>(null)
-  
-  // Fetch meeting history when component mounts
-  useEffect(() => {
-    fetchMeetingHistory(1)
-  },[])
-  
-  // Add this function to de-duplicate and process meetings
-  const processMeetings = (meetings: Meeting[]) => {
-    const uniqueMeetings = new Map();
-    
-    meetings.forEach(meeting => {
-      const existingMeeting = uniqueMeetings.get(meeting._id);
-      
-      if (existingMeeting) {
-        if (meeting.status === 'completed' && existingMeeting.status === 'ongoing') {
-          uniqueMeetings.set(meeting._id, meeting);
-        }
-      } else {
-        uniqueMeetings.set(meeting._id, meeting);
-      }
-    });
-    
-    return Array.from(uniqueMeetings.values())
-      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-  };
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalMeetings: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
 
-  const fetchMeetingHistory = async (currentPage: number) => {
+const HistoryPage = () => {
+  const navigate = useNavigate();
+  const { user } = useContext(UserContext);
+  const { isAuthenticated, loading: authLoading } = useAuthCheck();
+
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 1,
+    totalMeetings: 0,
+    hasNext: false,
+    hasPrev: false
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [transcriptDialog, setTranscriptDialog] = useState<{
+    open: boolean;
+    meeting: Meeting | null;
+  }>({ open: false, meeting: null });
+
+  const fetchMeetings = async (page = 1, status = '') => {
     try {
-      setLoading(true)
-      const token = localStorage.getItem('token')
-      
+      setLoading(true);
+      const token = localStorage.getItem('token');
       if (!token) {
-        navigate('/')
-        return
+        navigate('/login');
+        return;
       }
-      
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10'
+      });
+
+      if (status) {
+        params.append('status', status);
+      }
+
       const response = await axios.get(
-        `${import.meta.env.VITE_BASE_URL}/users/history`,
+        `${import.meta.env.VITE_BASE_URL}/meetings/history?${params}`,
         {
-          params: {
-            page: currentPage,
-            limit: pageSize,
-          },
           headers: {
             Authorization: `Bearer ${token}`
           }
         }
-      )
-      
+      );
+
       if (response.data.success) {
-        const newMeetings = response.data.data;
-        
-        const processedMeetings = processMeetings(
-          currentPage === 1 ? newMeetings : [...meetings, ...newMeetings]
-        );
-        
-        setMeetings(processedMeetings);
-        
-        if (response.data.pagination) {
-          setHasMore(response.data.pagination.hasMore);
-        } else {
-          setHasMore(newMeetings.length === pageSize);
-        }
-      } else {
-        setError('Failed to fetch meeting history')
+        setMeetings(response.data.data.meetings);
+        setPagination(response.data.data.pagination);
+        setError(null);
       }
-    } catch (error) {
-      console.error('Error fetching meeting history:', error)
-      setError('An error occurred while fetching your meeting history')
+    } catch (err: any) {
+      console.error('Error fetching meetings:', err);
+      setError(err.response?.data?.message || 'Failed to fetch meetings');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  // Load more meetings when scrolling to bottom
-  const loadMoreMeetings = () => {
-    if (!loading && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchMeetingHistory(nextPage);
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      fetchMeetings();
+    } else if (!authLoading && !isAuthenticated) {
+      navigate('/login');
     }
-  }
+  }, [authLoading, isAuthenticated, navigate]);
 
-  // Setup intersection observer for infinite scrolling
-  const lastMeetingRef = useCallback((node: HTMLDivElement) => {
-    if (loading) return;
-    if (observer.current) observer.current.disconnect();
-    
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        loadMoreMeetings();
-      }
-    });
-    
-    if (node) observer.current.observe(node);
-  }, [loading, hasMore]);
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) => {
+    fetchMeetings(page, statusFilter);
+  };
+
+  const handleStatusFilterChange = (status: string) => {
+    setStatusFilter(status);
+    fetchMeetings(1, status);
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleString('en-US', {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
-  }
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-  const joinMeeting = (meetingLink: string) => {
-    try {
-      const url = new URL(meetingLink);
-      const pathParts = url.pathname.split('/');
-      const meetingId = pathParts[pathParts.length - 1];
-      
-      navigate(`/meeting/${meetingId}`);
-    } catch (error) {
-      const meetingId = meetingLink.split('/').pop() || meetingLink;
-      navigate(`/meeting/${meetingId}`);
+  const formatDuration = (startTime: string, endTime: string) => {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const durationMs = end.getTime() - start.getTime();
+    const minutes = Math.floor(durationMs / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m`;
     }
+    return `${minutes}m`;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 Bytes';
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'success';
+      case 'ongoing':
+        return 'warning';
+      case 'scheduled':
+        return 'info';
+      case 'cancelled':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const handleDownloadRecording = async (meetingId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${import.meta.env.VITE_BASE_URL}/meetings/${meetingId}/recording/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          responseType: 'blob'
+        }
+      );
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `meeting_${meetingId}_recording.webm`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading recording:', err);
+      setError('Failed to download recording');
+    }
+  };
+
+  const handleDownloadTranscript = async (meetingId: string, format: 'txt' | 'vtt' = 'txt') => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${import.meta.env.VITE_BASE_URL}/meetings/${meetingId}/transcript/download?format=${format}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          responseType: 'blob'
+        }
+      );
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `meeting_${meetingId}_transcript.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading transcript:', err);
+      setError('Failed to download transcript');
+    }
+  };
+
+  const handleViewTranscript = (meeting: Meeting) => {
+    setTranscriptDialog({ open: true, meeting });
+  };
+
+  const closeTranscriptDialog = () => {
+    setTranscriptDialog({ open: false, meeting: null });
+  };
+
+  if (authLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
     <div className="min-h-screen">
-      {/* Replace custom navbar with Navbar component */}
       <Navbar />
+      
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Meeting History
+        </Typography>
 
-      <div className="history-container max-w-6xl mx-auto mt-4 sm:mt-8 p-4">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Meeting History</h1>
-        
-        {loading && page === 1 && <p className="text-center py-4">Loading your meeting history...</p>}
-        
-        {error && <p className="text-red-500 text-center py-4">{error}</p>}
-        
-        {!loading && !error && meetings.length === 0 && 
-          <p className="text-center py-8">You have no meeting history yet.</p>
-        }
-
-        {!loading && !error && meetings.length > 0 && (
-          <div className="meetings-list-container" style={{ 
-            maxHeight: "calc(100vh - 200px)", 
-            overflowY: "auto",
-            msOverflowStyle: "none",
-            scrollbarWidth: "none"
-          }}>
-            <style>
-              {`
-                .meetings-list-container::-webkit-scrollbar {
-                  display: none;
-                }
-              `}
-            </style>
-            <div className="meetings-list">
-              {/* Desktop header */}
-              <div className="hidden sm:grid grid-cols-5 font-bold mb-2 p-3 bg-gray-100 rounded sticky top-0">
-                <div>Title</div>
-                <div>Date & Time</div>
-                <div>Duration</div>
-                <div>Status</div>
-                <div>Actions</div>
-              </div>
-              
-              {meetings.map((meeting, index) => {
-                const startTime = new Date(meeting.startTime);
-                const endTime = meeting.status === 'completed' ? new Date(meeting.endTime) : new Date();
-                let durationMinutes = 0;
-                
-                // Calculate duration
-                if (meeting.status === 'completed') {
-                  const durationMs = endTime.getTime() - startTime.getTime();
-                  durationMinutes = Math.max(0, Math.round(durationMs / (1000 * 60)));
-                } else if (meeting.status === 'ongoing') {
-                  const durationMs = Date.now() - startTime.getTime();
-                  durationMinutes = Math.max(0, Math.round(durationMs / (1000 * 60)));
-                } else {
-                  const durationMs = new Date(meeting.endTime).getTime() - startTime.getTime();
-                  durationMinutes = Math.max(0, Math.round(durationMs / (1000 * 60)));
-                }
-                
-                // Add a ref to the last item for infinite scrolling
-                const isLastItem = index === meetings.length - 1;
-                
-                return (
-                  <div 
-                    key={meeting._id} 
-                    ref={isLastItem ? lastMeetingRef : null}
-                    className="border-b hover:bg-gray-50"
-                  >
-                    {/* Desktop view */}
-                    <div className="hidden sm:grid sm:grid-cols-5 p-3">
-                      <div>
-                        <p className="font-medium">{meeting.title}</p>
-                        {meeting.description && <p className="text-sm text-gray-600">{meeting.description}</p>}
-                      </div>
-                      <div>{formatDate(meeting.startTime)}</div>
-                      <div>{durationMinutes} minutes</div>
-                      <div>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          meeting.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          meeting.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                          meeting.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {meeting.status}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        {meeting.status === 'scheduled' && (
-                          <button 
-                            onClick={() => joinMeeting(meeting.meetingLink)}
-                            className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-                          >
-                            Join
-                          </button>
-                        )}
-                        {meeting.status === 'completed' && (
-                          <button className="text-gray-700 bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm">
-                            View Details
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Mobile view */}
-                    <div className="sm:hidden p-4 flex flex-col gap-2">
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-medium">{meeting.title}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          meeting.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          meeting.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                          meeting.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {meeting.status}
-                        </span>
-                      </div>
-                      
-                      {meeting.description && 
-                        <p className="text-sm text-gray-600">{meeting.description}</p>
-                      }
-                      
-                      <div className="text-sm text-gray-600">
-                        {formatDate(meeting.startTime)}
-                      </div>
-                      
-                      <div className="text-sm">
-                        Duration: {durationMinutes} minutes
-                      </div>
-                      
-                      <div className="flex gap-2 mt-2">
-                        {meeting.status === 'scheduled' && (
-                          <button 
-                            onClick={() => joinMeeting(meeting.meetingLink)}
-                            className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm flex-1"
-                          >
-                            Join Meeting
-                          </button>
-                        )}
-                        {meeting.status === 'completed' && (
-                          <button className="text-gray-700 bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm flex-1">
-                            View Details
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Loading indicator at the bottom */}
-              {loading && page > 1 && (
-                <div className="text-center py-4">
-                  <p>Loading more meetings...</p>
-                </div>
-              )}
-              
-              {/* End of list indicator */}
-              {!loading && !hasMore && meetings.length > 0 && (
-                <div className="text-center py-4 text-gray-500">
-                  <p>No more meetings to load</p>
-                </div>
-              )}
-            </div>
-          </div>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
         )}
-      </div>
+
+        {/* Filters */}
+        <Box sx={{ mb: 3 }}>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Filter by Status</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Filter by Status"
+              onChange={(e) => handleStatusFilterChange(e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="ongoing">Ongoing</MenuItem>
+              <MenuItem value="scheduled">Scheduled</MenuItem>
+              <MenuItem value="cancelled">Cancelled</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        {loading ? (
+          <Box display="flex" justifyContent="center" py={4}>
+            <CircularProgress />
+          </Box>
+        ) : meetings.length === 0 ? (
+          <Box textAlign="center" py={4}>
+            <VideoIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              No meetings found
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {statusFilter ? `No ${statusFilter} meetings found.` : 'You haven\'t participated in any meetings yet.'}
+            </Typography>
+          </Box>
+        ) : (
+          <>
+            <Grid container spacing={3}>
+              {meetings.map((meeting) => (
+                <Grid item xs={12} key={meeting._id}>
+                  <Card>
+                    <CardContent>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                        <Typography variant="h6" component="h2">
+                          {meeting.title}
+                        </Typography>
+                        <Chip
+                          label={meeting.status.toUpperCase()}
+                          color={getStatusColor(meeting.status) as any}
+                          size="small"
+                        />
+                      </Box>
+
+                      {meeting.description && (
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                          {meeting.description}
+                        </Typography>
+                      )}
+
+                      <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <TimeIcon fontSize="small" color="action" />
+                          <Typography variant="body2">
+                            {formatDate(meeting.startTime)}
+                          </Typography>
+                        </Box>
+
+                        {meeting.status === 'completed' && (
+                          <Box display="flex" alignItems="center" gap={0.5}>
+                            <TimeIcon fontSize="small" color="action" />
+                            <Typography variant="body2">
+                              Duration: {formatDuration(meeting.startTime, meeting.endTime)}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <PeopleIcon fontSize="small" color="action" />
+                          <Typography variant="body2">
+                            {meeting.participants.length + 1} participants
+                          </Typography>
+                        </Box>
+
+                        <Typography variant="body2" color="text.secondary">
+                          Host: {meeting.hostId._id === user?._id ? 'You' : meeting.hostId.name}
+                        </Typography>
+                      </Box>
+
+                      {/* Recording and Transcript Info */}
+                      {(meeting.recording?.isRecorded || meeting.transcript?.isGenerated) && (
+                        <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1, mb: 2 }}>
+                          {meeting.recording?.isRecorded && (
+                            <Box display="flex" alignItems="center" gap={1} mb={1}>
+                              <PlayIcon fontSize="small" color="primary" />
+                              <Typography variant="body2">
+                                Recording available ({formatFileSize(meeting.recording.recordingSize)})
+                              </Typography>
+                            </Box>
+                          )}
+                          {meeting.transcript?.isGenerated && (
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <TranscriptIcon fontSize="small" color="primary" />
+                              <Typography variant="body2">
+                                Transcript available
+                                {meeting.transcript.duration && ` (${Math.round(meeting.transcript.duration / 60)} min)`}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+                    </CardContent>
+
+                    <CardActions>
+                      {meeting.recording?.isRecorded && (
+                        <Tooltip title="Download Recording">
+                          <IconButton
+                            onClick={() => handleDownloadRecording(meeting._id)}
+                            color="primary"
+                          >
+                            <DownloadIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {meeting.transcript?.isGenerated && (
+                        <>
+                          <Tooltip title="View Transcript">
+                            <IconButton
+                              onClick={() => handleViewTranscript(meeting)}
+                              color="primary"
+                            >
+                              <TranscriptIcon />
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Download Transcript (TXT)">
+                            <Button
+                              size="small"
+                              onClick={() => handleDownloadTranscript(meeting._id, 'txt')}
+                            >
+                              TXT
+                            </Button>
+                          </Tooltip>
+
+                          {meeting.transcript.vttUrl && (
+                            <Tooltip title="Download Subtitles (VTT)">
+                              <Button
+                                size="small"
+                                onClick={() => handleDownloadTranscript(meeting._id, 'vtt')}
+                                startIcon={<SubtitlesIcon />}
+                              >
+                                VTT
+                              </Button>
+                            </Tooltip>
+                          )}
+                        </>
+                      )}
+                    </CardActions>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <Box display="flex" justifyContent="center" mt={4}>
+                <Pagination
+                  count={pagination.totalPages}
+                  page={pagination.currentPage}
+                  onChange={handlePageChange}
+                  color="primary"
+                />
+              </Box>
+            )}
+          </>
+        )}
+
+        {/* Transcript Dialog */}
+        <Dialog
+          open={transcriptDialog.open}
+          onClose={closeTranscriptDialog}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Meeting Transcript
+            {transcriptDialog.meeting && (
+              <Typography variant="subtitle2" color="text.secondary">
+                {transcriptDialog.meeting.title}
+              </Typography>
+            )}
+          </DialogTitle>
+          <DialogContent>
+            {transcriptDialog.meeting?.transcript?.transcriptText && (
+              <Typography
+                variant="body2"
+                component="pre"
+                sx={{
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: 'monospace',
+                  bgcolor: 'grey.50',
+                  p: 2,
+                  borderRadius: 1,
+                  maxHeight: 400,
+                  overflow: 'auto'
+                }}
+              >
+                {transcriptDialog.meeting.transcript.transcriptText}
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeTranscriptDialog}>Close</Button>
+            {transcriptDialog.meeting && (
+              <>
+                <Button
+                  onClick={() => handleDownloadTranscript(transcriptDialog.meeting!._id, 'txt')}
+                  variant="outlined"
+                >
+                  Download TXT
+                </Button>
+                {transcriptDialog.meeting.transcript?.vttUrl && (
+                  <Button
+                    onClick={() => handleDownloadTranscript(transcriptDialog.meeting!._id, 'vtt')}
+                    variant="outlined"
+                  >
+                    Download VTT
+                  </Button>
+                )}
+              </>
+            )}
+          </DialogActions>
+        </Dialog>
+      </Container>
     </div>
-  )
-}
+  );
+};
+
+export default HistoryPage;
