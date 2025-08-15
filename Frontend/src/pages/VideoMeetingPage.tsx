@@ -175,7 +175,6 @@ export default function VideoMeetingPage() {
       console.log("Processing pending connections:", pendingConnectionsRef.current);
       const pendingConnections = [...pendingConnectionsRef.current];
       pendingConnectionsRef.current = [];
-      
       // Process the pending connections with a small delay to ensure all states are updated
       setTimeout(() => {
         pendingConnections.forEach(clientId => {
@@ -201,7 +200,6 @@ export default function VideoMeetingPage() {
     setLocalStreamReady(true);
   }
 }; 
-
 
   // Create a helper function to set up a connection with proper error handling
   const createConnectionForClient = (clientId: string, createOffer = false) => {
