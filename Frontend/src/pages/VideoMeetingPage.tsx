@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useContext } from 'react'
+import { useState, useRef, useEffect, useContext, useCallback } from 'react'
 import '../styles/VideoMeetingPage.css'
 // Update import to use TypeScript version
 import { updateVideoLayout, markAsScreenShare, updateLocalVideoPosition } from "../scripts/videoLayoutManager";
@@ -16,8 +16,11 @@ import CancelPresentationIcon from "@mui/icons-material/CancelPresentation"; // 
 import ChatIcon from "@mui/icons-material/Chat";
 import PeopleIcon from "@mui/icons-material/People";
 import ThreeDotsIcon from "@mui/icons-material/MoreVert";
+import RecordingControls from "../components/RecordingControls";
 import { useNavigate, useParams } from 'react-router-dom';
 import io from 'socket.io-client';
+import { Socket } from "socket.io-client";
+import FlipCameraAndroidIcon from '@mui/icons-material/FlipCameraAndroid';
 import axios from 'axios';
 
 // Define types for your WebRTC connections
@@ -78,9 +81,8 @@ export default function VideoMeetingPage() {
   const [audioAvailable, setAudioAvailable] = useState<boolean>(true);
   const [video, setVideo] = useState<boolean>(false);
   const [audio, setAudio] = useState<boolean>(false);
-  const [screen, setScreen] = useState<boolean>(false);
+    // Using isScreenSharing instead of screen
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false); // Added to track actual screen sharing state
-  const [screenAvailable, setScreenAvailable] = useState<boolean>(false);
   const [messages, setMessages] = useState<{data: string, sender: string}[]>([]);
   const [message, setMessage] = useState<string>("");
   const [newMessages, setNewMessages] = useState<number>(0);
@@ -90,6 +92,8 @@ export default function VideoMeetingPage() {
   const [localStreamReady, setLocalStreamReady] = useState<boolean>(false);
   const pendingConnectionsRef = useRef<string[]>([]);
   const connectionsRef = useRef<ConnectionsType>(connectionsStore);
+
+  const [isMirrored, setIsMirrored] = useState(true);
   
   // Add ref to track if video state was updated
   const videoUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -97,7 +101,7 @@ export default function VideoMeetingPage() {
   
   // Add missing refs
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const socketRef = useRef<any>(null);
+  const socketRef = useRef<Socket | null>(null);
   const socketIdRef = useRef<string>("");
   
   // Create connections object
@@ -123,6 +127,8 @@ export default function VideoMeetingPage() {
 
   // Add state for chat visibility on mobile
   const [isChatVisible, setIsChatVisible] = useState<boolean>(false);
+  const [isHost] = useState<boolean>(false); // Not using setIsHost
+  const [isRecording, setIsRecording] = useState<boolean>(false);
 
   const closeParticipantModal = () => {
     setIsClosing(true)
@@ -140,60 +146,62 @@ export default function VideoMeetingPage() {
 
   // Update the getPermissions function to properly handle stream readiness
   const getPermissions = async () => {
-    try {
-      console.log("Getting media permissions...");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+  try {
+    console.log("Getting media permissions...");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
 
-      setVideoAvailable(true);
-      setAudioAvailable(true);
-      setScreenAvailable(!!navigator.mediaDevices.getDisplayMedia);
-      
-      setVideo(true);
-      setAudio(true);
+    setVideoAvailable(true);
+    setAudioAvailable(true);
+    setScreenAvailable(!!navigator.mediaDevices.getDisplayMedia);
+    
+    setVideo(true);
+    setAudio(true);
 
-      window.localStream = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-      
-      // Set both state and ref for stream readiness
-      setLocalStreamReady(true);
-      streamReadyRef.current = true;
-      console.log("Local stream initialized successfully");
-      
-      // Process any pending connections that came in before stream was ready
-      if (pendingConnectionsRef.current.length > 0 && socketRef.current) {
-        console.log("Processing pending connections:", pendingConnectionsRef.current);
-        const pendingConnections = [...pendingConnectionsRef.current];
-        pendingConnectionsRef.current = [];
-        
-        // Process the pending connections with a small delay to ensure all states are updated
-        setTimeout(() => {
-          pendingConnections.forEach(clientId => {
-            createConnectionForClient(clientId, true);
-          });
-        }, 500);
-      }
-    } catch (err) {
-      console.error("Error getting media permissions:", err);
-      if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-        setVideoAvailable(false);
-        setAudioAvailable(false);
-      }
-      
-      // Even with no devices, we should create a black/silent stream
-      console.log("Creating fallback black/silent stream");
-      let BlackSilence = (...args) => new MediaStream([silence(), black(...args)]);
-      window.localStream = BlackSilence();
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = window.localStream;
-      }
-      setLocalStreamReady(true);
+    window.localStream = stream;
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
     }
-  };
+    
+    // Set both state and ref for stream readiness
+    setLocalStreamReady(true);
+    streamReadyRef.current = true;
+    console.log("Local stream initialized successfully");
+    
+    // Process any pending connections that came in before stream was ready
+    if (pendingConnectionsRef.current.length > 0 && socketRef.current) {
+      console.log("Processing pending connections:", pendingConnectionsRef.current);
+      const pendingConnections = [...pendingConnectionsRef.current];
+      pendingConnectionsRef.current = [];
+      
+      // Process the pending connections with a small delay to ensure all states are updated
+      setTimeout(() => {
+        pendingConnections.forEach(clientId => {
+          createConnectionForClient(clientId, true);
+        });
+      }, 500);
+    }
+  } catch (err) {
+    console.error("Error getting media permissions:", err);
+    if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+      setVideoAvailable(false);
+      setAudioAvailable(false);
+    }
+    
+    // Even with no devices, we should create a black/silent stream
+    console.log("Creating fallback black/silent stream");
+    const BlackSilence = (...args: Array<{width?: number, height?: number}>) =>
+      new MediaStream([silence(), black(...args[0])]);
+    window.localStream = BlackSilence();
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = window.localStream;
+    }
+    setLocalStreamReady(true);
+  }
+}; 
+
 
   // Create a helper function to set up a connection with proper error handling
   const createConnectionForClient = (clientId: string, createOffer = false) => {
@@ -422,17 +430,21 @@ export default function VideoMeetingPage() {
             console.log(err);
           }
           //Todo BlackSilence
-          let BlackSilence = (...args) =>
-            new MediaStream([silence(), black(...args)]);
+          const BlackSilence = (...args: Array<{width?: number, height?: number}>) =>
+            new MediaStream([silence(), black(...args[0])]);
           window.localStream = BlackSilence();
           if (localVideoRef.current) {
             localVideoRef.current.srcObject = window.localStream;
           }
-          for (let peerId in connectionsRef.current) {
+          for (const peerId in connectionsRef.current) {
             if (peerId === socketRef.current.id) {
               continue;
             }
-            connectionsRef.current[peerId].removeStream(window.localStream);
+            // removeStream is deprecated, use getSenders().forEach(sender => connection.removeTrack(sender)) instead
+          window.localStream.getTracks().forEach(track => {
+            const senders = connectionsRef.current[peerId].getSenders().filter(sender => sender.track === track);
+            senders.forEach(sender => connectionsRef.current[peerId].removeTrack(sender));
+          });
             connectionsRef.current[peerId].createOffer().then((description) => {
               connectionsRef.current[peerId]
                 .setLocalDescription(description)
@@ -457,7 +469,8 @@ export default function VideoMeetingPage() {
     const dst = oscillator.connect(ctx.createMediaStreamDestination());
     oscillator.start();
     ctx.resume();
-    return Object.assign(dst.stream.getAudioTracks()[0], { enabled: false });
+    // Fix the AudioNode stream property error by accessing MediaStreamAudioDestinationNode correctly
+    return Object.assign((dst as MediaStreamAudioDestinationNode).stream.getAudioTracks()[0], { enabled: false });
   };
 
   const black = ({ width = 640, height = 480 } = {}) => {
@@ -694,9 +707,9 @@ export default function VideoMeetingPage() {
         setSocketError("Connection timeout");
       });
       
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error creating socket:", err);
-      setSocketError(err.message || "Failed to create socket connection");
+      setSocketError(err instanceof Error ? err.message : "Failed to create socket connection");
     }
   };
 
@@ -762,7 +775,7 @@ export default function VideoMeetingPage() {
   };
 
   // Update the getMedia function to handle socket errors
-  const getMedia = async () => {
+  const getMedia = useCallback(async () => {
     try {
       setVideo(videoAvailable);
       setAudio(audioAvailable);
@@ -778,7 +791,7 @@ export default function VideoMeetingPage() {
     } catch (err) {
       console.error("Error in getMedia:", err);
       // Fall back to a black/silent stream if there's an error
-      let BlackSilence = (...args) => new MediaStream([silence(), black(...args)]);
+      const BlackSilence = (...args: Array<{width?: number, height?: number}>) => new MediaStream([silence(), black(...args[0])]);
       window.localStream = BlackSilence();
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = window.localStream;
@@ -787,7 +800,7 @@ export default function VideoMeetingPage() {
       setLocalStreamReady(true);
       connectToSocketServer();
     }
-  };
+  }, [videoAvailable, audioAvailable, connectToSocketServer, streamReadyRef, localVideoRef, setLocalStreamReady, silence, black]);
 
   const connect = () => {
     if (username !== "") {
@@ -842,7 +855,7 @@ export default function VideoMeetingPage() {
     // Update screen sharing state
     setIsScreenSharing(true);
 
-    for(let peerId in connectionsRef.current){
+    for(const peerId in connectionsRef.current){
       if(peerId === socketRef.current.id){
         continue;
       }
@@ -888,7 +901,7 @@ export default function VideoMeetingPage() {
       }catch(err){
         console.error("Error: ", err);
       }
-      let BlackSilence = (...args) => new MediaStream([silence(), black(...args)]);
+      let BlackSilence = (...args: Array<{width?: number, height?: number}>) => new MediaStream([silence(), black(...args[0])]);
       window.localStream = BlackSilence();
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = window.localStream;
@@ -1021,7 +1034,7 @@ export default function VideoMeetingPage() {
         if (checkResponse.data.success) {
           console.log("Found existing meeting, updating status");
         }
-      } catch (error) {
+      } catch (_err) {
         console.log("Meeting not found, no update needed");
         return null;
       }
@@ -1071,7 +1084,7 @@ export default function VideoMeetingPage() {
       if (window.localStream) {
         console.log("Stopping local stream tracks...");
         stopMediaStream(window.localStream);
-        window.localStream = null as any; // Clear reference
+        window.localStream = null as unknown; // Clear reference
       }
       
       // Stop tracks from video element source
@@ -1090,8 +1103,8 @@ export default function VideoMeetingPage() {
         if (connection) {
           // Remove all event listeners
           connection.onicecandidate = null;
-          connection.onaddstream = null;
-          connection.onremovestream = null;
+          // onaddstream and onremovestream are deprecated
+          // Instead, we should be using track events, but we're just cleaning up here
           connection.oniceconnectionstatechange = null;
           
           // Close the connection
@@ -1137,7 +1150,8 @@ export default function VideoMeetingPage() {
       Object.values(connections).forEach((connection) => {
         if (connection) {
           connection.onicecandidate = null;
-          connection.onaddstream = null;
+          // onaddstream is deprecated
+          // Instead, we should be using track events, but we're just cleaning up here
           connection.close();
         }
       });
@@ -1145,7 +1159,7 @@ export default function VideoMeetingPage() {
       // Clean up media streams
       if (window.localStream) {
         stopMediaStream(window.localStream);
-        window.localStream = null as any;
+        window.localStream = null as unknown;
       }
       
       // Clean up socket
@@ -1154,7 +1168,7 @@ export default function VideoMeetingPage() {
         socketRef.current.disconnect();
       }
     };
-  }, []);
+  }, [connections, getPermissions]);
 
   // Check for logged-in user and set username if available
   useEffect(() => {
@@ -1192,7 +1206,7 @@ export default function VideoMeetingPage() {
         }
       }
     }
-  }, [loading, isAuthenticated, user, navigate]);
+  }, [loading, isAuthenticated, user, navigate, getMedia]);
 
   // First check if the user has access to this meeting
   useEffect(() => {
@@ -1224,7 +1238,7 @@ export default function VideoMeetingPage() {
       // First get media, then socket connection will follow
       getMedia();
     }
-  }, [isAuthenticated, meetingAccessChecked, askForUsername, username]);
+  }, [isAuthenticated, meetingAccessChecked, askForUsername, username, getMedia]);
 
   // Add another effect to handle reconnections when local stream becomes available
   useEffect(() => {
@@ -1241,7 +1255,7 @@ export default function VideoMeetingPage() {
         });
       }, 500);
     }
-  }, [localStreamReady]);
+  }, [localStreamReady, createConnectionForClient]);
 
   // Add a useEffect to reset stream ready status when the component unmounts
   useEffect(() => {
@@ -1335,7 +1349,7 @@ export default function VideoMeetingPage() {
         <div className='video-meeting-page-container'>
             <div className="main-video-container">
               <div 
-                className="local-video-container"
+                className="local-video-container relative"
                 ref={localVideoContainerRef}
               >
                 <video
@@ -1343,8 +1357,18 @@ export default function VideoMeetingPage() {
                   autoPlay
                   playsInline
                   muted
-                  className={`local-video ${isScreenSharing ? 'screen-share' : ''}`}
+                  className={`local-video ${isScreenSharing ? 'screen-share' : ''} ${isMirrored ? 'scale-x-[-1]' : ''}`}
                 ></video>
+
+                {/* Flip Camera button - bottom-left overlay */}
+                <button
+                  onClick={() => setIsMirrored(!isMirrored)}
+                  className="absolute bottom-2 left-2 bg-gray-800 bg-opacity-50 text-white px-2.5 py-2 rounded-full 
+                  hover:bg-opacity-70 transition border border-white/30 shadow-lg"
+                  title={isMirrored ? "Unflip Camera" : "Flip Camera"}
+                >
+                  <FlipCameraAndroidIcon fontSize="small" className="mb-1"/>
+                </button>
               </div>
               <div 
                 className="remote-video-container"
@@ -1445,6 +1469,12 @@ export default function VideoMeetingPage() {
               <IconButton className='icon-button call-end' onClick={handleEndCall}>
                 <CallEndIcon fontSize="medium" />
               </IconButton>
+              
+              <RecordingControls 
+                meetingId={actualMeetingId || ''} 
+                isHost={isHost} 
+                onRecordingStateChange={setIsRecording} 
+              />
               
               {/* Only show chat button on larger screens */}
               {window.innerWidth > 768 && (

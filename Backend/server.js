@@ -11,6 +11,12 @@ import userRoutes from './src/routes/userRoutes.js';
 import meetingRoutes from './src/routes/meetingRoutes.js';
 import cookieParser from 'cookie-parser';
 import { networkInterfaces } from 'os';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Set up __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 // Use PORT from environment or default to 3001 instead of 3000 which is likely in use
@@ -22,9 +28,38 @@ const io = connectToSocket(server);
 
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
-connectDb();
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Create uploads directory and subdirectories if they don't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+const recordingsDir = path.join(uploadsDir, 'recordings');
+const transcriptsDir = path.join(uploadsDir, 'transcripts');
+
+import fs from 'fs';
+
+// Create directories if they don't exist
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('Created uploads directory');
+}
+if (!fs.existsSync(recordingsDir)) {
+    fs.mkdirSync(recordingsDir, { recursive: true });
+    console.log('Created recordings directory');
+}
+if (!fs.existsSync(transcriptsDir)) {
+    fs.mkdirSync(transcriptsDir, { recursive: true });
+    console.log('Created transcripts directory');
+}
+
+// Connect to MongoDB but continue even if it fails
+connectDb().then(connected => {
+    if (!connected) {
+        console.log('Server will run with limited functionality due to database connection issues');
+    }
+});
 
 app.use('/users', userRoutes);
 app.use('/meetings', meetingRoutes);
